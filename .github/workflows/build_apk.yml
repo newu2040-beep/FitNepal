@@ -35,6 +35,7 @@ jobs:
           cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
           rm -rf android
           flutter create --platforms=android --org np.com.fitnepal --project-name fitnepal .
+          rm -f test/widget_test.dart
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cat << 'EOF' > android/app/build.gradle
           plugins {

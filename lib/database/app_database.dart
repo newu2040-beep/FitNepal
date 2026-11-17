@@ -241,7 +241,7 @@ class AppDatabase extends _$AppDatabase {
             Variable<double>(food.proteinG),
             Variable<double>(food.carbsG),
             Variable<double>(food.fatG),
-            Variable<String?>(food.imageAssetPath),
+            Variable<String>(food.imageAssetPath),
             Variable<bool>(food.isCustom),
             Variable<String>(food.estimateNote),
           ],
@@ -323,7 +323,7 @@ class AppDatabase extends _$AppDatabase {
         Variable<String>(updated.displayName.trim().isEmpty
             ? 'Rahul Shah'
             : updated.displayName.trim()),
-        Variable<String?>(updated.avatarPath),
+        Variable<String>(updated.avatarPath),
         Variable<String>(updated.language),
         Variable<String>(updated.themeMode),
         Variable<String>(updated.units),
@@ -470,7 +470,7 @@ class AppDatabase extends _$AppDatabase {
           Variable<double>(proteinG),
           Variable<double>(carbsG),
           Variable<double>(fatG),
-          Variable<String?>(imageAssetPath),
+          Variable<String>(imageAssetPath),
           Variable<String>(estimateNote),
           Variable<int>(id),
         ],
@@ -491,7 +491,7 @@ class AppDatabase extends _$AppDatabase {
           Variable<double>(proteinG),
           Variable<double>(carbsG),
           Variable<double>(fatG),
-          Variable<String?>(imageAssetPath),
+          Variable<String>(imageAssetPath),
           Variable<String>(estimateNote),
         ],
         updates: {foods},
@@ -582,7 +582,7 @@ class AppDatabase extends _$AppDatabase {
       'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
       'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       variables: [
-        Variable<int?>(food.id),
+        Variable<int>(food.id),
         Variable<String>(food.name),
         Variable<int>(timestamp),
         Variable<String>(mealType),
@@ -1187,7 +1187,7 @@ class AppDatabase extends _$AppDatabase {
             'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
             'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             variables: [
-              const Variable<int?>(null),
+              const Variable<int>(null),
               Variable<String>(l.foodNameSnapshot),
               Variable<int>(l.loggedAt.millisecondsSinceEpoch),
               Variable<String>(l.mealType),
