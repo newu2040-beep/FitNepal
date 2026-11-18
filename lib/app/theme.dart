@@ -78,14 +78,71 @@ class FitNepalTheme {
       darkCanvas: Color(0xFF1E120C),
       darkSurface: Color(0xFF2D1B12),
     ),
+    FitNepalPaletteTokens(
+      id: 'gold',
+      nameEn: 'Kathmandu Temple Gold',
+      nameNe: 'काठमाडौं मन्दिर सुनौलो',
+      primary: Color(0xFFD97706),
+      secondary: Color(0xFFF59E0B),
+      lightCanvas: Color(0xFFFFFBF2),
+      darkCanvas: Color(0xFF1C160B),
+      darkSurface: Color(0xFF2B2211),
+    ),
+    FitNepalPaletteTokens(
+      id: 'forest',
+      nameEn: 'Chitwan Pine Forest',
+      nameNe: 'चितवन वन हरियो',
+      primary: Color(0xFF15803D),
+      secondary: Color(0xFF22C55E),
+      lightCanvas: Color(0xFFF3FAF5),
+      darkCanvas: Color(0xFF0C1A11),
+      darkSurface: Color(0xFF14291C),
+    ),
+    FitNepalPaletteTokens(
+      id: 'indigo',
+      nameEn: 'Pokhara Midnight Lake',
+      nameNe: 'पोखरा फेवा इन्डिगो',
+      primary: Color(0xFF4F46E5),
+      secondary: Color(0xFF6366F1),
+      lightCanvas: Color(0xFFF5F6FF),
+      darkCanvas: Color(0xFF101124),
+      darkSurface: Color(0xFF1A1C38),
+    ),
+    FitNepalPaletteTokens(
+      id: 'crimson',
+      nameEn: 'Gorkha Velvet Crimson',
+      nameNe: 'गोर्खा मखमली सिम्रिक',
+      primary: Color(0xFFBE123C),
+      secondary: Color(0xFFF43F5E),
+      lightCanvas: Color(0xFFFFF5F7),
+      darkCanvas: Color(0xFF1C0D12),
+      darkSurface: Color(0xFF2B141C),
+    ),
+    FitNepalPaletteTokens(
+      id: 'slate',
+      nameEn: 'Annapurna Monochrome Slate',
+      nameNe: 'अन्नपूर्ण स्लेट',
+      primary: Color(0xFF334155),
+      secondary: Color(0xFF475569),
+      lightCanvas: Color(0xFFF8FAFC),
+      darkCanvas: Color(0xFF0F172A),
+      darkSurface: Color(0xFF1E293B),
+    ),
   ];
 
   static const List<({String id, String nameEn, String nameNe, String? family, double letterSpacing})>
       fonts = [
     (
+      id: 'system',
+      nameEn: 'System Default Font',
+      nameNe: 'सिस्टम डिफल्ट फन्ट',
+      family: null,
+      letterSpacing: 0.0,
+    ),
+    (
       id: 'sans',
-      nameEn: 'Modern Sans (Default)',
-      nameNe: 'आधुनिक सान्स (डिफल्ट)',
+      nameEn: 'Modern Geometric Sans',
+      nameNe: 'आधुनिक सान्स',
       family: 'sans-serif',
       letterSpacing: 0.0,
     ),
@@ -116,6 +173,13 @@ class FitNepalTheme {
       nameNe: 'एथलेटिक कम्प्याक्ट',
       family: 'sans-serif-condensed',
       letterSpacing: 0.15,
+    ),
+    (
+      id: 'light',
+      nameEn: 'Airy Light Minimal',
+      nameNe: 'हल्का मिनिमल',
+      family: 'sans-serif-light',
+      letterSpacing: 0.25,
     ),
   ];
 
@@ -182,6 +246,11 @@ class FitNepalTheme {
 
     return base.copyWith(
       textTheme: adjustedTextTheme,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,

@@ -1,7 +1,7 @@
 name: fitnepal
-description: FitNepal — Offline-First Android Nutrition, Calorie, Macro & Hydration Tracker built with Flutter and Drift SQLite.
+description: FitNepal v5.0 Elite — Offline-First Android Nutrition, Calorie, Macro & Hydration Tracker built with Flutter and Drift SQLite.
 publish_to: 'none'
-version: 1.1.0+2
+version: 5.0.0+5
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

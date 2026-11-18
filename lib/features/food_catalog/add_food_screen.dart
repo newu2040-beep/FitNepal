@@ -7,6 +7,7 @@ import '../../core/food_artwork.dart';
 import '../../core/shared_widgets.dart';
 import '../../database/models.dart';
 import '../food_logging/food_log_sheet.dart';
+import '../reminders/reminders_sheet.dart';
 
 class AddFoodScreen extends ConsumerStatefulWidget {
   const AddFoodScreen({super.key});
@@ -57,6 +58,18 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
       loggedAt: loggedAt,
     );
 
+    final pushEnabled =
+        await db.getAppSetting('realtime_push_on_log') != 'false';
+    if (pushEnabled) {
+      final toneId =
+          await db.getAppSetting('reminder_tone_id') ?? 'singing_bowl';
+      await LocalNotificationHelper.pushRealtimeNotification(
+        title: 'Quick Added • ${food.name} 🍛',
+        body: '+${food.kcal} kcal (${food.proteinG}g Protein) logged to $mealType',
+        toneId: toneId,
+      );
+    }
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -88,21 +101,14 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
     );
   }
 
-  void _openScanSheet() {
+  void _openManualFoodEntry({bool logImmediately = true}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const ScanFoodLookupSheet(),
-    );
-  }
-
-  void _openCustomFoodCreator() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const CustomFoodCreatorSheet(),
+      builder: (_) => CustomFoodCreatorSheet(
+        logImmediatelyDefault: logImmediately,
+      ),
     );
   }
 
@@ -134,20 +140,11 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
           IconButton(
             tooltip: FitNepalStrings.tr(
               lang,
-              'Create custom food',
-              'नयाँ खाना थप्नुहोस्',
+              'Add food or meal manually',
+              'आफैं खाना थप्नुहोस्',
             ),
-            onPressed: _openCustomFoodCreator,
-            icon: const Icon(Icons.post_add_rounded, size: 22),
-          ),
-          IconButton(
-            tooltip: FitNepalStrings.tr(
-              lang,
-              'Scan food barcode',
-              'खाना स्क्यान गर्नुहोस्',
-            ),
-            onPressed: _openScanSheet,
-            icon: const Icon(Icons.qr_code_scanner_rounded, size: 22),
+            onPressed: () => _openManualFoodEntry(logImmediately: true),
+            icon: const Icon(Icons.edit_note_rounded, size: 26),
           ),
           const SizedBox(width: 6),
         ],
@@ -232,7 +229,8 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                       'खाना सूची लोड हुन सकेन',
                     ),
                     message: err.toString(),
-                    actionLabel: FitNepalStrings.tr(lang, 'Retry', 'पुनः प्रयास'),
+                    actionLabel:
+                        FitNepalStrings.tr(lang, 'Retry', 'पुनः प्रयास'),
                     onAction: () => ref.invalidate(filteredFoodsProvider),
                   ),
                 ),
@@ -242,7 +240,7 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Center(
                         child: EmptyStateCard(
-                          icon: Icons.search_off_rounded,
+                          icon: Icons.post_add_rounded,
                           title: FitNepalStrings.tr(
                             lang,
                             'No matching food found',
@@ -250,21 +248,25 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                           ),
                           message: FitNepalStrings.tr(
                             lang,
-                            'Can\'t find "$searchQuery"? Add it as a custom food entry in seconds.',
-                            '"$searchQuery" भेटिएन? आफ्नै कस्टम खाना थप्नुहोस्।',
+                            'Add "$searchQuery" manually with your exact calories, protein, carbs, and fats.',
+                            '"$searchQuery" को क्यालोरी र पोषण विवरण आफैं थप्नुहोस्।',
                           ),
                           actionLabel: FitNepalStrings.tr(
                             lang,
-                            'Create Custom Food',
-                            'नयाँ खाना बनाउनुहोस्',
+                            'Add Food Manually',
+                            'म्यानुअल खाना थप्नुहोस्',
                           ),
-                          onAction: _openCustomFoodCreator,
+                          onAction: () =>
+                              _openManualFoodEntry(logImmediately: true),
                         ),
                       ),
                     );
                   }
 
                   return ListView.separated(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: FitNepalSpacing.screenHorizontal,
                       vertical: 4,
@@ -289,6 +291,7 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
               ),
             ),
 
+            // Bottom Manual Entry Card (replaces misleading Scan Food card)
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 FitNepalSpacing.screenHorizontal,
@@ -297,7 +300,7 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                 16,
               ),
               child: InkWell(
-                onTap: _openScanSheet,
+                onTap: () => _openManualFoodEntry(logImmediately: true),
                 borderRadius: BorderRadius.circular(22),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -307,10 +310,10 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                   decoration: BoxDecoration(
                     color: isDark
                         ? Theme.of(context).colorScheme.surface
-                        : const Color(0xFFFDE6EE),
+                        : primaryColor.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
-                      color: primaryColor.withOpacity(0.18),
+                      color: primaryColor.withOpacity(0.22),
                     ),
                   ),
                   child: Row(
@@ -319,11 +322,11 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(isDark ? 0.1 : 0.8),
+                          color: Colors.white.withOpacity(isDark ? 0.1 : 0.85),
                           borderRadius: BorderRadius.circular(13),
                         ),
                         child: Icon(
-                          Icons.qr_code_scanner_rounded,
+                          Icons.post_add_rounded,
                           color: primaryColor,
                           size: 24,
                         ),
@@ -336,12 +339,12 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                             Text(
                               FitNepalStrings.tr(
                                 lang,
-                                'Scan Food',
-                                'खाना स्क्यान गर्नुहोस्',
+                                'Add Custom Food / Meal Manually',
+                                'म्यानुअल रूपमा नयाँ खाना थप्नुहोस्',
                               ),
                               style: TextStyle(
                                 color: primaryColor,
-                                fontSize: 15.5,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -349,12 +352,12 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                             Text(
                               FitNepalStrings.tr(
                                 lang,
-                                'Find nutrition info',
-                                'पोषण विवरण पत्ता लगाउनुहोस्',
+                                'Enter custom calories, protein, carbs, fats & serving',
+                                'क्यालोरी, प्रोटिन, कार्ब्स र चिल्लो आफैं प्रविष्ट गर्नुहोस्',
                               ),
                               style: const TextStyle(
                                 color: FitNepalColors.mutedPlum,
-                                fontSize: 12.5,
+                                fontSize: 12.2,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -434,7 +437,7 @@ class _FoodCatalogueRow extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: FitNepalColors.softPinkFill,
+                            color: primaryColor.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(99),
                           ),
                           child: Text(
@@ -451,10 +454,10 @@ class _FoodCatalogueRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${food.kcal} kcal / ${food.servingLabel}',
+                    '${food.kcal} kcal / ${food.servingLabel} • P ${food.proteinG}g  C ${food.carbsG}g  F ${food.fatG}g',
                     style: const TextStyle(
                       color: FitNepalColors.mutedPlum,
-                      fontSize: 13.5,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),

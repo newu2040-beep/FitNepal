@@ -17,13 +17,10 @@ class WelcomeScreen extends ConsumerStatefulWidget {
 class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   bool _isStarting = false;
 
-  Future<void> _handleGetStarted({bool loadShowcaseData = false}) async {
+  Future<void> _handleGetStarted() async {
     setState(() => _isStarting = true);
     try {
       final db = ref.read(appDatabaseProvider);
-      if (loadShowcaseData) {
-        await db.seedMockupShowcaseData();
-      }
       await db.setAppSetting('onboarding_completed', 'true');
       if (mounted) {
         context.go('/home');
@@ -62,7 +59,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: NepalMountainPagodaArtwork(height: 410),
+              child: RepaintBoundary(
+                child: NepalMountainPagodaArtwork(height: 410),
+              ),
             ),
             SafeArea(
               child: Column(
@@ -93,7 +92,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.68),
+                            backgroundColor: Colors.white.withOpacity(0.72),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 8,
@@ -130,7 +129,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.68),
+                            backgroundColor: Colors.white.withOpacity(0.72),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 8,
@@ -146,7 +145,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
                   const Spacer(flex: 2),
 
-                  const FitNepalHeartLogo(size: 124),
+                  const FitNepalHeartLogo(size: 126),
                   const SizedBox(height: 16),
 
                   const Text(
@@ -158,7 +157,27 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                       letterSpacing: -0.8,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6B092B).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Text(
+                      'v5.0 ELITE • OFFLINE EDITION',
+                      style: TextStyle(
+                        color: Color(0xFF6B092B),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
                   Text(
                     FitNepalStrings.tr(
@@ -187,35 +206,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                       trailingIcon: Icons.arrow_forward_rounded,
                       isLoading: _isStarting,
                       height: 56,
-                      onPressed: () =>
-                          _handleGetStarted(loadShowcaseData: false),
+                      onPressed: _handleGetStarted,
                     ),
                   ),
-                  const SizedBox(height: 10),
-
-                  GestureDetector(
-                    onTap: _isStarting
-                        ? null
-                        : () => _handleGetStarted(loadShowcaseData: true),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        FitNepalStrings.tr(
-                          lang,
-                          'Or explore with Mockup Sample Data →',
-                          'वा नमूना डाटाको साथ हेर्नुहोस् →',
-                        ),
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.88),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                          decorationColor: Colors.white54,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -235,7 +229,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                       const Text('🇳🇵', style: TextStyle(fontSize: 14)),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
                 ],
               ),
             ),

@@ -7,6 +7,8 @@ import '../../core/date_helpers.dart';
 import '../../core/food_artwork.dart';
 import '../../core/shared_widgets.dart';
 import '../../database/models.dart';
+import '../food_logging/food_log_sheet.dart';
+import '../reminders/reminders_sheet.dart';
 import '../water_tracking/water_tracking_sheet.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -23,6 +25,83 @@ class HomeScreen extends ConsumerWidget {
     if (picked != null) {
       ref.read(selectedDateProvider.notifier).state =
           LocalDateHelpers.startOfDay(picked);
+    }
+  }
+
+  Future<void> _showEditLogDialog(
+    BuildContext context,
+    WidgetRef ref,
+    FoodLogEntry entry,
+    String lang,
+  ) async {
+    final qtyCtrl = TextEditingController(text: entry.quantity.toString());
+    String mealType = entry.mealType;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(entry.foodNameSnapshot),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: qtyCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText:
+                      '${FitNepalStrings.tr(lang, 'Quantity', 'परिमाण')} (${entry.servingLabel})',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: FitNepalCategories.mealTypes.contains(mealType)
+                    ? mealType
+                    : 'Lunch',
+                decoration: InputDecoration(
+                  labelText: FitNepalStrings.tr(
+                    lang,
+                    'Meal Type',
+                    'खानाको समय',
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                items: FitNepalCategories.mealTypes
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setModalState(() => mealType = v);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(FitNepalStrings.tr(lang, 'Cancel', 'रद्द')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(FitNepalStrings.tr(lang, 'Update', 'अद्यावधिक')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final newQty =
+          (double.tryParse(qtyCtrl.text.trim()) ?? entry.quantity).clamp(0.1, 30.0);
+      await ref.read(appDatabaseProvider).updateFoodLogEntry(
+            entry: entry,
+            newQuantity: newQty,
+            newMealType: mealType,
+          );
     }
   }
 
@@ -47,12 +126,15 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: ListView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           padding: const EdgeInsets.symmetric(
             horizontal: FitNepalSpacing.screenHorizontal,
             vertical: 14,
           ),
           children: [
-            // 1. Greeting Header & Avatar (matches Screen 2 top row)
+            // 1. Greeting Header & Avatar
             Row(
               children: [
                 Expanded(
@@ -135,113 +217,116 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 18),
 
             // 2. Hero Calories Today Card
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    secondaryColor,
-                    primaryColor,
-                    Color.lerp(primaryColor, Colors.black, 0.25)!,
+            RepaintBoundary(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      secondaryColor,
+                      primaryColor,
+                      Color.lerp(primaryColor, Colors.black, 0.25)!,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
                   ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryColor.withOpacity(0.28),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text('🔥', style: TextStyle(fontSize: 15)),
-                            const SizedBox(width: 6),
-                            Text(
-                              FitNepalStrings.tr(
-                                lang,
-                                'Calories Today',
-                                'आजको क्यालोरी',
-                              ),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        RichText(
-                          text: TextSpan(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              TextSpan(
-                                text: '${summary.caloriesConsumed}',
+                              const Text('🔥', style: TextStyle(fontSize: 15)),
+                              const SizedBox(width: 6),
+                              Text(
+                                FitNepalStrings.tr(
+                                  lang,
+                                  'Calories Today',
+                                  'आजको क्यालोरी',
+                                ),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w900,
-                                  fontFeatures: [
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                ),
-                              ),
-                              TextSpan(
-                                text: ' / ${summary.calorieTarget} kcal',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.85),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          summary.isOverCalorieTarget
-                              ? FitNepalStrings.tr(
-                                  lang,
-                                  'Over target by ${summary.caloriesOverBy} kcal',
-                                  'लक्ष्यभन्दा ${summary.caloriesOverBy} kcal बढी',
-                                )
-                              : FitNepalStrings.tr(
-                                  lang,
-                                  '${summary.remainingCalories} kcal remaining',
-                                  '${summary.remainingCalories} kcal बाँकी',
+                          const SizedBox(height: 10),
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${summary.caloriesConsumed}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    fontFeatures: [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
                                 ),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.88),
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                                TextSpan(
+                                  text: ' / ${summary.calorieTarget} kcal',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.85),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            summary.isOverCalorieTarget
+                                ? FitNepalStrings.tr(
+                                    lang,
+                                    'Over target by ${summary.caloriesOverBy} kcal',
+                                    'लक्ष्यभन्दा ${summary.caloriesOverBy} kcal बढी',
+                                  )
+                                : FitNepalStrings.tr(
+                                    lang,
+                                    '${summary.remainingCalories} kcal remaining',
+                                    '${summary.remainingCalories} kcal बाँकी',
+                                  ),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.88),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  AnimatedCalorieRing(
-                    progress: summary.clampedRingProgress,
-                    centerLabel: '${summary.caloriePercentageInt}%',
-                    size: 80,
-                    strokeWidth: 8.5,
-                    activeColor: Colors.white,
-                    trackColor: Colors.white.withOpacity(0.24),
-                    semanticLabel:
-                        '${summary.caloriePercentageInt} percent of daily calorie target consumed',
-                  ),
-                ],
+                    AnimatedCalorieRing(
+                      progress: summary.clampedRingProgress,
+                      centerLabel: '${summary.caloriePercentageInt}%',
+                      size: 80,
+                      strokeWidth: 8.5,
+                      activeColor: Colors.white,
+                      trackColor: Colors.white.withOpacity(0.24),
+                      semanticLabel:
+                          '${summary.caloriePercentageInt} percent of daily calorie target consumed',
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -288,7 +373,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 4. "You're on track!" Status Card
+            // 4. Status Card
             FitNepalCard(
               onTap: () => context.go('/progress'),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -519,12 +604,41 @@ class HomeScreen extends ConsumerWidget {
                         ActionChip(
                           visualDensity: VisualDensity.compact,
                           label: Text('+$ml ml'),
-                          onPressed: () {
-                            ref
-                                .read(appDatabaseProvider)
-                                .logWaterAmount(ml, loggedAt: DateTime.now());
+                          onPressed: () async {
+                            final db = ref.read(appDatabaseProvider);
+                            await db.logWaterAmount(ml, loggedAt: DateTime.now());
+                            final pushEnabled =
+                                await db.getAppSetting('realtime_push_on_log') !=
+                                    'false';
+                            if (pushEnabled) {
+                              final toneId =
+                                  await db.getAppSetting('reminder_tone_id') ??
+                                      'mountain_drop';
+                              await LocalNotificationHelper
+                                  .pushRealtimeNotification(
+                                title: 'Hydration Logged • +$ml ml 💧',
+                                body:
+                                    'Total today: ${summary.waterConsumedMl + ml} / ${summary.goal.waterTargetMl} ml',
+                                toneId: toneId,
+                              );
+                            }
                           },
                         ),
+                      ActionChip(
+                        visualDensity: VisualDensity.compact,
+                        avatar: const Icon(Icons.edit_rounded, size: 14),
+                        label: Text(
+                          FitNepalStrings.tr(lang, 'Custom', 'अन्य'),
+                        ),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => const WaterTrackingBottomSheet(),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ],
@@ -532,7 +646,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // 7. Today's Logged Meals Section
+            // 7. Today's Logged Meals Section (with 1-tap Manual Entry button)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -547,31 +661,35 @@ class HomeScreen extends ConsumerWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                if (summary.foodLogs.isEmpty)
-                  TextButton.icon(
-                    onPressed: () {
-                      ref
-                          .read(appDatabaseProvider)
-                          .seedMockupShowcaseData();
-                    },
-                    icon: Icon(
-                      Icons.auto_fix_high_rounded,
-                      size: 16,
-                      color: primaryColor,
+                TextButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const CustomFoodCreatorSheet(
+                        logImmediatelyDefault: true,
+                      ),
+                    );
+                  },
+                  icon: Icon(
+                    Icons.add_circle_outline_rounded,
+                    size: 16,
+                    color: primaryColor,
+                  ),
+                  label: Text(
+                    FitNepalStrings.tr(
+                      lang,
+                      'Manual Entry',
+                      'म्यानुअल थप्नुहोस्',
                     ),
-                    label: Text(
-                      FitNepalStrings.tr(
-                        lang,
-                        'Load Sample Day',
-                        'नमूना डाटा लोड',
-                      ),
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -586,13 +704,13 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 message: FitNepalStrings.tr(
                   lang,
-                  'Tap "Add Food" to log Dal Bhat, Momo, fruits, or custom dishes — or load the Mockup Sample Day.',
-                  'दाल भात, मःम, फलफूल वा अन्य खाना थप्न तलको बटन थिच्नुहोस्।',
+                  'Tap below to pick from the Nepali catalogue or enter any custom food and nutrition values manually.',
+                  'खाना सूचीबाट छान्न वा आफैं म्यानुअल खाना थप्न तलको बटन थिच्नुहोस्।',
                 ),
                 actionLabel: FitNepalStrings.tr(
                   lang,
-                  'Add First Meal',
-                  'पहिलो खाना थप्नुहोस्',
+                  'Add Meal Now',
+                  'खाना थप्नुहोस्',
                 ),
                 onAction: () => context.push('/add-food'),
               )
@@ -601,6 +719,7 @@ class HomeScreen extends ConsumerWidget {
                 (entry) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: FitNepalCard(
+                    onTap: () => _showEditLogDialog(context, ref, entry, lang),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,

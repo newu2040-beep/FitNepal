@@ -839,7 +839,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ===========================================================================
-  // STREAK, POINTS & STATS DAO
+  // STREAK, POINTS & STATS DAO (100% real user data, no demo overrides)
   // ===========================================================================
   Stream<({int streakDays, int totalPoints, int goalsCompleted})>
       watchProfileStats() {
@@ -847,11 +847,6 @@ class AppDatabase extends _$AppDatabase {
       'SELECT logged_at, kcal_snapshot FROM food_logs ORDER BY logged_at DESC',
       readsFrom: {foodLogs, waterLogs, goals, appSettings},
     ).watch().asyncMap((foodRows) async {
-      final demoActive = await getAppSetting('showcase_mode') == 'true';
-      if (demoActive && foodRows.isNotEmpty) {
-        // Matches the exact mockup stats (124 Streak, 1.2k Points, 7 Goals)
-        return (streakDays: 124, totalPoints: 1240, goalsCompleted: 7);
-      }
       final waterRows = await customSelect(
         'SELECT logged_at, amount_ml FROM water_logs',
         readsFrom: {waterLogs},
@@ -890,139 +885,6 @@ class AppDatabase extends _$AppDatabase {
         totalPoints: points,
         goalsCompleted: goalsCount,
       );
-    });
-  }
-
-  // ===========================================================================
-  // OPTIONAL DEMO / MOCKUP SHOWCASE DATA SEEDER (Section 12 compliant)
-  // ===========================================================================
-  /// Populates the exact numbers shown in the 5-screen FitNepal specification
-  /// mockup (Today: 720 / 2000 kcal, 36%, Protein 62g, Carbs 84g, Fats 28g,
-  /// Water 1.8 / 2.5L, plus Mon–Sun weekly history culminating in 1,920 kcal).
-  Future<void> seedMockupShowcaseData() async {
-    final now = DateTime.now();
-    final todayStart = LocalDateHelpers.startOfDay(now);
-
-    await transaction(() async {
-      // Clear today & past week logs first so totals match exact mockup figures
-      final weekAgoMs =
-          todayStart.subtract(const Duration(days: 7)).millisecondsSinceEpoch;
-      await customUpdate(
-        'DELETE FROM food_logs WHERE logged_at >= ?',
-        variables: [Variable<int>(weekAgoMs)],
-        updates: {foodLogs},
-      );
-      await customUpdate(
-        'DELETE FROM water_logs WHERE logged_at >= ?',
-        variables: [Variable<int>(weekAgoMs)],
-        updates: {waterLogs},
-      );
-
-      // Today's exact mockup breakdown:
-      // Total: 720 kcal, 62g Protein, 84g Carbs, 28g Fats
-      final breakfastMs =
-          todayStart.add(const Duration(hours: 8, minutes: 15)).millisecondsSinceEpoch;
-      final lunchMs =
-          todayStart.add(const Duration(hours: 13, minutes: 0)).millisecondsSinceEpoch;
-      final snackMs =
-          todayStart.add(const Duration(hours: 16, minutes: 30)).millisecondsSinceEpoch;
-
-      await customInsert(
-        'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
-        'VALUES (3, ?, ?, ?, 1.0, ?, 350, 26.0, 52.0, 9.0)',
-        variables: [
-          const Variable<String>('Dal Bhat'),
-          Variable<int>(lunchMs),
-          const Variable<String>('Lunch'),
-          const Variable<String>('plate'),
-        ],
-        updates: {foodLogs},
-      );
-
-      await customInsert(
-        'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
-        'VALUES (4, ?, ?, ?, 1.0, ?, 220, 31.0, 8.0, 14.0)',
-        variables: [
-          const Variable<String>('Chicken Curry'),
-          Variable<int>(lunchMs + 60000),
-          const Variable<String>('Lunch'),
-          const Variable<String>('100g'),
-        ],
-        updates: {foodLogs},
-      );
-
-      await customInsert(
-        'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
-        'VALUES (2, ?, ?, ?, 1.0, ?, 100, 3.0, 16.0, 3.0)',
-        variables: [
-          const Variable<String>('Banana & Oats Bowl'),
-          Variable<int>(breakfastMs),
-          const Variable<String>('Breakfast'),
-          const Variable<String>('bowl'),
-        ],
-        updates: {foodLogs},
-      );
-
-      await customInsert(
-        'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
-        'VALUES (5, ?, ?, ?, 1.0, ?, 50, 2.0, 8.0, 2.0)',
-        variables: [
-          const Variable<String>('Veg Salad'),
-          Variable<int>(snackMs),
-          const Variable<String>('Snack'),
-          const Variable<String>('bowl'),
-        ],
-        updates: {foodLogs},
-      );
-
-      // Today's water logs totaling 1,800 ml (1.8L / 2.5L)
-      final waterAmounts = [500, 500, 400, 400];
-      for (var i = 0; i < waterAmounts.length; i++) {
-        await customInsert(
-          'INSERT INTO water_logs (logged_at, amount_ml) VALUES (?, ?)',
-          variables: [
-            Variable<int>(
-              todayStart
-                  .add(Duration(hours: 9 + (i * 2)))
-                  .millisecondsSinceEpoch,
-            ),
-            Variable<int>(waterAmounts[i]),
-          ],
-          updates: {waterLogs},
-        );
-      }
-
-      // Past 6 days for the weekly bar chart (Mon..Sun pattern)
-      final historicalKcal = [1250, 1180, 1560, 1340, 1620, 1410, 1920];
-      for (var d = 1; d <= 6; d++) {
-        final dayDate = todayStart.subtract(Duration(days: d));
-        final dayKcal = historicalKcal[(7 - d) % historicalKcal.length];
-        await customInsert(
-          'INSERT INTO food_logs (food_id, food_name_snapshot, logged_at, meal_type, quantity, serving_label, kcal_snapshot, protein_snapshot, carbs_snapshot, fat_snapshot) '
-          'VALUES (3, ?, ?, ?, 1.0, ?, ?, 68.0, 175.0, 42.0)',
-          variables: [
-            const Variable<String>('Nepali Home Thali & Meals'),
-            Variable<int>(
-              dayDate.add(const Duration(hours: 13)).millisecondsSinceEpoch,
-            ),
-            const Variable<String>('Lunch'),
-            const Variable<String>('daily total'),
-            Variable<int>(dayKcal),
-          ],
-          updates: {foodLogs},
-        );
-        await customInsert(
-          'INSERT INTO water_logs (logged_at, amount_ml) VALUES (?, 1950)',
-          variables: [
-            Variable<int>(
-              dayDate.add(const Duration(hours: 14)).millisecondsSinceEpoch,
-            ),
-          ],
-          updates: {waterLogs},
-        );
-      }
-
-      await setAppSetting('showcase_mode', 'true');
     });
   }
 

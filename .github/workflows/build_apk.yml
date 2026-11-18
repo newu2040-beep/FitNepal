@@ -1,4 +1,4 @@
-name: Build FitNepal APK
+name: Build FitNepal v5.0 Elite APK
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Release APK
+    name: Build FitNepal v5.0 Elite Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -54,12 +54,12 @@ jobs:
 
           def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
           if (flutterVersionCode == null) {
-              flutterVersionCode = '2'
+              flutterVersionCode = '5'
           }
 
           def flutterVersionName = localProperties.getProperty('flutter.versionName')
           if (flutterVersionName == null) {
-              flutterVersionName = '1.1.0'
+              flutterVersionName = '5.0.0'
           }
 
           android {
@@ -126,13 +126,15 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FitNepal-Release-APK
+          name: FitNepal-v5.0-Elite-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
-      - name: Publish to GitHub Releases
+      - name: Publish to GitHub Releases (v5.0.0 and v1.0.0)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cp build/app/outputs/flutter-apk/app-release.apk FitNepal-v5.0-Elite.apk
           cp build/app/outputs/flutter-apk/app-release.apk FitNepal.apk
-          gh release upload v1.0.0 FitNepal.apk --clobber || gh release create v1.0.0 FitNepal.apk --title "FitNepal v1.1.0 Release" --notes "Offline-First FitNepal Android APK with Native App Icon, Real-Time Language Switch, 5 Themes, 5 Fonts & Full Profile Customisation"
+          gh release upload v5.0.0 FitNepal-v5.0-Elite.apk FitNepal.apk --clobber || gh release create v5.0.0 FitNepal-v5.0-Elite.apk FitNepal.apk --title "FitNepal v5.0 Elite Release" --notes "FitNepal v5.0 Elite — 100% Manual Nutrition Entry, PDF/CSV/TXT/MD Report Exporter, 10 Themes, System Default Font, Real-Time Push Alerts & 6 Inbuilt Nepali Tones"
+          gh release upload v1.0.0 FitNepal.apk FitNepal-v5.0-Elite.apk --clobber || true

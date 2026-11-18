@@ -88,11 +88,13 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             const FitNepalHeartLogo(size: 36),
             const SizedBox(width: 10),
-            Text(
-              FitNepalStrings.tr(
-                lang,
-                'About FitNepal 🇳🇵',
-                'फिटनेपालको बारेमा 🇳🇵',
+            Expanded(
+              child: Text(
+                FitNepalStrings.tr(
+                  lang,
+                  'FitNepal v5.0 Elite 🇳🇵',
+                  'फिटनेपाल v5.0 एलिट 🇳🇵',
+                ),
               ),
             ),
           ],
@@ -100,44 +102,20 @@ class ProfileScreen extends ConsumerWidget {
         content: Text(
           FitNepalStrings.tr(
             lang,
-            'FitNepal v1.1.0 — Offline-First Android Nutrition, Calorie, Macro & Hydration Tracker.\n\n'
-                '• Built with Flutter, Material 3, Riverpod, GoRouter, and local Drift/SQLite persistence.\n'
-                '• Real-time bilingual support (English / नेपाली), 5 custom themes, 5 font families, and full body profile customization.\n'
-                '• Nutrition values are estimates. FitNepal is a personal tracking tool, not medical advice.\n'
+            'FitNepal v5.0 Elite — Offline-First Android Nutrition, Calorie, Macro & Hydration Tracker.\n\n'
+                '• 100% Manual & Accurate Logging: Add and edit all meals, custom foods, calories, macros, water, and goals manually.\n'
+                '• Multi-Format Report Export: Export your logs in PDF, CSV, TXT, MD, or JSON format anytime.\n'
+                '• 10 Custom Color Themes & 7 Font Styles (including Android System Default Font).\n'
+                '• Real-Time Push Alerts with 6 Inbuilt Nepali Reminder Tones.\n'
                 '• Made with ❤️ in Nepal.',
-            'फिटनेपाल v1.1.0 — अफलाइन पोषण, क्यालोरी र पानी ट्र्याकर।\n\n'
-                '• सम्पूर्ण डाटा तपाईंको फोनमा मात्र सुरक्षित रहन्छ।\n'
-                '• पोषण मानहरू अनुमानित हुन्। यो व्यक्तिगत ट्र्याकिङ टुल हो, चिकित्सकीय सल्लाह होइन।\n'
+            'फिटनेपाल v5.0 एलिट — १००% अफलाइन पोषण, क्यालोरी र पानी ट्र्याकर।\n\n'
+                '• सम्पूर्ण खाना, लक्ष्य र प्रोफाइल म्यानुअल रूपमा थप्न र सम्पादन गर्न सकिन्छ।\n'
+                '• PDF, CSV, TXT र MD फर्म्याटमा रिपोर्ट एक्सपोर्ट सुविधा।\n'
+                '• १० वटा थिम र सिस्टम डिफल्ट फन्ट समर्थन।\n'
                 '• नेपालमा ❤️ का साथ निर्मित।',
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () async {
-              await ref.read(appDatabaseProvider).seedMockupShowcaseData();
-              if (ctx.mounted) Navigator.of(ctx).pop();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      FitNepalStrings.tr(
-                        lang,
-                        'Loaded Mockup Sample Data (720/2000 kcal, 62g P, 84g C, 28g F)!',
-                        'नमूना डाटा लोड भयो (७२०/२००० क्यालोरी)!',
-                      ),
-                    ),
-                  ),
-                );
-              }
-            },
-            child: Text(
-              FitNepalStrings.tr(
-                lang,
-                'Load Mockup Sample Data',
-                'नमूना डाटा लोड गर्नुहोस्',
-              ),
-            ),
-          ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(),
             style: ElevatedButton.styleFrom(
@@ -156,7 +134,7 @@ class ProfileScreen extends ConsumerWidget {
     final profile = ref.watch(liveProfileProvider);
     final lang = profile.language;
     final stats = ref.watch(profileStatsProvider).valueOrNull ??
-        (streakDays: 124, totalPoints: 1240, goalsCompleted: 7);
+        (streakDays: 0, totalPoints: 0, goalsCompleted: 0);
     final reminders = ref.watch(remindersProvider).valueOrNull ?? const [];
     final activeRemindersCount = reminders.where((r) => r.enabled).length;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -452,11 +430,30 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const _MenuDivider(),
                   _SettingsMenuRow(
+                    icon: Icons.picture_as_pdf_rounded,
+                    iconColor: const Color(0xFFD32F2F),
+                    title: FitNepalStrings.tr(
+                      lang,
+                      'Export Report (PDF, CSV, TXT, MD)',
+                      'रिपोर्ट एक्सपोर्ट (PDF, CSV, TXT, MD)',
+                    ),
+                    trailingLabel: 'PDF/CSV',
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const PrivacyAndBackupSheet(),
+                      );
+                    },
+                  ),
+                  const _MenuDivider(),
+                  _SettingsMenuRow(
                     icon: Icons.lock_rounded,
                     iconColor: FitNepalColors.proteinAccent,
                     title: FitNepalStrings.tr(
                       lang,
-                      'Privacy & Security',
+                      'Privacy, Backup & Data Controls',
                       'गोपनीयता र डाटा सुरक्षा',
                     ),
                     onTap: () {
@@ -474,8 +471,8 @@ class ProfileScreen extends ConsumerWidget {
                     iconColor: FitNepalColors.waterBlue,
                     title: FitNepalStrings.tr(
                       lang,
-                      'About FitNepal',
-                      'फिटनेपालको बारेमा',
+                      'About FitNepal v5.0 Elite',
+                      'फिटनेपाल v5.0 एलिटको बारेमा',
                     ),
                     onTap: () => _showAboutSheet(context, ref, lang),
                   ),

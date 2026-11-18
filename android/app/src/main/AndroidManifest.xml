@@ -1,21 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      Section 6 Scoped Android Permissions Policy:
+      FitNepal v5.0 Elite Scoped Android Permissions Policy:
       - NO INTERNET permission (100% offline-first local database architecture)
+      - NO CAMERA permission (Scan Food removed in favor of 100% accurate manual nutrition entry)
       - NO MANAGE_EXTERNAL_STORAGE / broad all-files access (uses Storage Access Framework)
       - NO Location, Contacts, or Microphone permissions
-      - POST_NOTIFICATIONS requested contextually only when the user enables reminders on Android 13+
-      - CAMERA requested contextually only when the user invokes Scan Food
+      - POST_NOTIFICATIONS requested contextually for real-time local alerts & inbuilt reminder tones
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.CAMERA" />
-
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
 
     <application
         android:label="FitNepal"

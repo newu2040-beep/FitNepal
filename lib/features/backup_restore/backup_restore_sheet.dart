@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/constants.dart';
-import '../../core/shared_widgets.dart';
+import 'report_exporter.dart';
 
 class PrivacyAndBackupSheet extends ConsumerStatefulWidget {
   const PrivacyAndBackupSheet({super.key});
@@ -20,6 +20,30 @@ class PrivacyAndBackupSheet extends ConsumerStatefulWidget {
 class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
   bool _isBusy = false;
   String? _statusBanner;
+
+  Future<void> _exportReportFormat(String format) async {
+    setState(() {
+      _isBusy = true;
+      _statusBanner = null;
+    });
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final msg = await FitNepalReportExporter.exportReport(
+        context: context,
+        db: db,
+        format: format,
+      );
+      if (mounted) {
+        setState(() => _statusBanner = msg);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _statusBanner = 'Export note: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
 
   Future<void> _exportJsonBackup() async {
     setState(() {
@@ -45,13 +69,13 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
       if (!mounted) return;
       if (savedPath != null) {
         setState(() {
-          _statusBanner = 'Backup exported successfully to selected file!';
+          _statusBanner = 'JSON Backup exported successfully!';
         });
       } else {
         await Clipboard.setData(ClipboardData(text: prettyJson));
         setState(() {
           _statusBanner =
-              'Document picker cancelled — backup JSON copied to clipboard as fallback.';
+              'Document picker cancelled — backup JSON copied to clipboard.';
         });
       }
     } catch (e) {
@@ -105,8 +129,6 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
         return;
       }
 
-      // Section 7 rule: "preview the result; ask whether to merge or replace.
-      // Safety: create a temporary rollback copy before destructive restore."
       final action = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -123,7 +145,8 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
               const SizedBox(height: 12),
               const Text(
                 'Would you like to MERGE this backup with your current data or REPLACE all existing data? (A temporary rollback copy is created automatically before replacing.)',
-                style: TextStyle(fontSize: 12.5, color: FitNepalColors.mutedPlum),
+                style:
+                    TextStyle(fontSize: 12.5, color: FitNepalColors.mutedPlum),
               ),
             ],
           ),
@@ -139,7 +162,7 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop('replace'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: FitNepalColors.berryRed,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Replace All'),
@@ -202,8 +225,11 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
     final db = ref.read(appDatabaseProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: EdgeInsets.only(
@@ -232,75 +258,29 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Privacy, Backup & Local Data Controls',
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-
-            // Section 6 Privacy statement requirement:
-            // "Privacy page must state: no account required, data stored locally, no cloud sync, user controls export and deletion."
-            // Section 1: "explain that uninstalling or clearing app storage can erase local data; provide export and restore."
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? FitNepalColors.darkCanvas
-                    : FitNepalColors.canvasBlush,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: FitNepalColors.roseBorder),
+            Text(
+              FitNepalStrings.tr(
+                lang,
+                'Export Reports (PDF, CSV, TXT, MD) & Backup',
+                'रिपोर्ट एक्सपोर्ट (PDF, CSV, TXT, MD) र ब्याकअप',
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.verified_user_rounded,
-                        color: FitNepalColors.berryRed,
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        '100% On-Device Privacy Guarantee',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    '• No account or login is required.\n'
-                    '• All profile, food, water, and goal records are stored strictly in an app-private SQLite database on your phone.\n'
-                    '• Zero cloud sync, Firebase, analytics SDKs, or external servers.\n'
-                    '• Uninstalling the app or clearing Android app storage will erase local data — export a JSON backup anytime to keep a safe copy.\n'
-                    '• Android scoped storage is used intentionally so FitNepal never requests broad all-files access.',
-                    style: TextStyle(
-                      color: FitNepalColors.mutedPlum,
-                      fontSize: 12.2,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             if (_statusBanner != null) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: FitNepalColors.softPinkFill,
+                  color: primaryColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   _statusBanner!,
-                  style: const TextStyle(
-                    color: FitNepalColors.berryRed,
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w800,
                     fontSize: 12.5,
                   ),
                 ),
@@ -308,17 +288,89 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
               const SizedBox(height: 12),
             ],
 
+            // Multi-Format Report Export Grid (PDF | CSV | TXT | MD)
+            Text(
+              FitNepalStrings.tr(
+                lang,
+                '1-Tap Export Nutrition & Hydration Report',
+                'आफ्नो पोषण र पानीको रिपोर्ट एक्सपोर्ट गर्नुहोस्',
+              ),
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                for (final fmt in const [
+                  ('pdf', 'PDF', Icons.picture_as_pdf_rounded, Color(0xFFD32F2F)),
+                  ('csv', 'CSV', Icons.table_chart_rounded, Color(0xFF2E7D32)),
+                  ('txt', 'TXT', Icons.description_rounded, Color(0xFF1565C0)),
+                  ('md', 'MD', Icons.code_rounded, Color(0xFF6A1B9A)),
+                ])
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: InkWell(
+                        onTap:
+                            _isBusy ? null : () => _exportReportFormat(fmt.$1),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: fmt.$4.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: fmt.$4.withOpacity(0.30),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(fmt.$3, color: fmt.$4, size: 22),
+                              const SizedBox(height: 4),
+                              Text(
+                                fmt.$2,
+                                style: TextStyle(
+                                  color: fmt.$4,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Full Restorable JSON Backup & Restore
+            Text(
+              FitNepalStrings.tr(
+                lang,
+                'Full Database Backup & Restore (JSON)',
+                'पूर्ण डाटाबेस ब्याकअप र रिस्टोर (JSON)',
+              ),
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isBusy ? null : _exportJsonBackup,
                     icon: const Icon(Icons.upload_file_rounded, size: 18),
-                    label: const Text('Export Backup'),
+                    label: const Text('Export JSON'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: FitNepalColors.berryRed,
+                      backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
@@ -327,23 +379,43 @@ class _PrivacyAndBackupSheetState extends ConsumerState<PrivacyAndBackupSheet> {
                   child: OutlinedButton.icon(
                     onPressed: _isBusy ? null : _importJsonBackup,
                     icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('Import Backup'),
+                    label: const Text('Restore JSON'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
-            // Section 7 Delete controls:
-            // "separate clear-today, clear-history, reset-goals and delete-all-data actions. Require explicit confirmation for destructive actions."
+            // On-Device Privacy Statement
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? FitNepalColors.darkCanvas
+                    : primaryColor.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: primaryColor.withOpacity(0.18)),
+              ),
+              child: const Text(
+                '• 100% Offline & Local-Only: No account required, stored in app-private SQLite, zero cloud sync or tracking SDKs.\n'
+                '• Uninstalling or clearing Android app storage erases local data — export a report or backup anytime.',
+                style: TextStyle(
+                  color: FitNepalColors.mutedPlum,
+                  fontSize: 11.8,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             const Text(
               'Granular Local Data Controls',
-              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _DeleteOptionTile(
               title: "Clear Today's Logs",
               subtitle:

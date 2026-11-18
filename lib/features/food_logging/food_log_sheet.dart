@@ -4,14 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../app/providers.dart';
 import '../../core/constants.dart';
 import '../../core/food_artwork.dart';
 import '../../core/shared_widgets.dart';
 import '../../database/models.dart';
+import '../reminders/reminders_sheet.dart';
 
-/// Bottom sheet to select serving quantity and meal type before logging a food item.
+/// Bottom sheet to select serving quantity, edit nutrients manually if desired,
+/// and choose meal type before logging a food item.
 class LogFoodQuantitySheet extends ConsumerStatefulWidget {
   final FoodItem food;
 
@@ -61,6 +62,19 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
       loggedAt: loggedAt,
     );
 
+    final pushEnabled =
+        await db.getAppSetting('realtime_push_on_log') != 'false';
+    if (pushEnabled) {
+      final toneId =
+          await db.getAppSetting('reminder_tone_id') ?? 'singing_bowl';
+      await LocalNotificationHelper.pushRealtimeNotification(
+        title: 'Meal Logged • ${widget.food.name} 🍛',
+        body:
+            '+${widget.food.scaledKcal(_quantity)} kcal (${widget.food.scaledProtein(_quantity)}g Protein) added to $_selectedMealType',
+        toneId: toneId,
+      );
+    }
+
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -84,6 +98,7 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
   Widget build(BuildContext context) {
     final food = widget.food;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: EdgeInsets.only(
@@ -140,15 +155,22 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text(
-                        food.estimateNote,
-                        style: const TextStyle(
-                          color: FitNepalColors.softPlum,
-                          fontSize: 11.5,
-                        ),
-                      ),
                     ],
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Edit food values manually',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) =>
+                          CustomFoodCreatorSheet(existingFood: food),
+                    );
+                  },
+                  icon: Icon(Icons.edit_outlined, color: primaryColor),
                 ),
                 if (food.isCustom)
                   IconButton(
@@ -159,24 +181,23 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
                           .deleteCustomFood(food.id);
                       if (context.mounted) Navigator.of(context).pop();
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline_rounded,
-                      color: FitNepalColors.berryRed,
+                      color: primaryColor,
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 20),
 
-            // Scaled Macro & Calorie Preview Card
             Container(
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               decoration: BoxDecoration(
                 color: isDark
                     ? FitNepalColors.darkCanvas
-                    : FitNepalColors.canvasBlush,
+                    : primaryColor.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: FitNepalColors.roseBorder),
+                border: Border.all(color: primaryColor.withOpacity(0.18)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -185,7 +206,7 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
                     label: 'Calories',
                     value: '${food.scaledKcal(_quantity)}',
                     unit: 'kcal',
-                    color: FitNepalColors.berryRed,
+                    color: primaryColor,
                   ),
                   _NutrientPreviewColumn(
                     label: 'Protein',
@@ -210,7 +231,6 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
             ),
             const SizedBox(height: 18),
 
-            // Quantity Selector
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -223,8 +243,8 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
                 ),
                 Text(
                   '${_quantity.toStringAsFixed(_quantity.truncateToDouble() == _quantity ? 0 : 1)} × ${food.servingLabel}',
-                  style: const TextStyle(
-                    color: FitNepalColors.berryRed,
+                  style: TextStyle(
+                    color: primaryColor,
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
                   ),
@@ -236,7 +256,7 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final q in const [0.5, 1.0, 1.5, 2.0, 3.0])
+                for (final q in const [0.5, 1.0, 1.5, 2.0, 2.5, 3.0])
                   ChoiceChip(
                     label: Text(
                       q == q.truncateToDouble()
@@ -244,7 +264,7 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
                           : '${q.toStringAsFixed(1)}×',
                     ),
                     selected: _quantity == q,
-                    selectedColor: FitNepalColors.berryRed,
+                    selectedColor: primaryColor,
                     labelStyle: TextStyle(
                       color: _quantity == q
                           ? Colors.white
@@ -259,7 +279,6 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
             ),
             const SizedBox(height: 18),
 
-            // Meal Type Selector
             const Text(
               'Meal Type',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
@@ -273,7 +292,7 @@ class _LogFoodQuantitySheetState extends ConsumerState<LogFoodQuantitySheet> {
                   ChoiceChip(
                     label: Text(meal),
                     selected: _selectedMealType == meal,
-                    selectedColor: FitNepalColors.berryRed,
+                    selectedColor: primaryColor,
                     labelStyle: TextStyle(
                       color: _selectedMealType == meal
                           ? Colors.white
@@ -349,9 +368,18 @@ class _NutrientPreviewColumn extends StatelessWidget {
   }
 }
 
-/// Custom Food Creation Sheet with Android Photo Picker support (copied to app-private storage).
+/// Comprehensive Manual Food & Meal Entry Studio:
+/// Lets the user add any food, meal, drink, or nutrition values manually,
+/// optionally log it immediately to today's meals, and/or save it to the catalogue.
 class CustomFoodCreatorSheet extends ConsumerStatefulWidget {
-  const CustomFoodCreatorSheet({super.key});
+  final FoodItem? existingFood;
+  final bool logImmediatelyDefault;
+
+  const CustomFoodCreatorSheet({
+    super.key,
+    this.existingFood,
+    this.logImmediatelyDefault = true,
+  });
 
   @override
   ConsumerState<CustomFoodCreatorSheet> createState() =>
@@ -360,15 +388,38 @@ class CustomFoodCreatorSheet extends ConsumerStatefulWidget {
 
 class _CustomFoodCreatorSheetState
     extends ConsumerState<CustomFoodCreatorSheet> {
-  final _nameCtrl = TextEditingController();
-  final _servingCtrl = TextEditingController(text: '1 bowl');
-  final _kcalCtrl = TextEditingController(text: '250');
-  final _protCtrl = TextEditingController(text: '10');
-  final _carbsCtrl = TextEditingController(text: '35');
-  final _fatCtrl = TextEditingController(text: '8');
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _servingCtrl;
+  late final TextEditingController _kcalCtrl;
+  late final TextEditingController _protCtrl;
+  late final TextEditingController _carbsCtrl;
+  late final TextEditingController _fatCtrl;
+  late final TextEditingController _qtyCtrl;
   String _category = 'Meals';
+  String _mealType = 'Lunch';
   String? _savedImagePath;
+  bool _alsoLogNow = true;
+  bool _saveToCatalogue = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final ex = widget.existingFood;
+    _nameCtrl = TextEditingController(text: ex?.name ?? '');
+    _servingCtrl = TextEditingController(text: ex?.servingLabel ?? '1 serving');
+    _kcalCtrl = TextEditingController(text: (ex?.kcal ?? 250).toString());
+    _protCtrl = TextEditingController(
+        text: (ex?.proteinG ?? 12.0).toStringAsFixed(1));
+    _carbsCtrl = TextEditingController(
+        text: (ex?.carbsG ?? 32.0).toStringAsFixed(1));
+    _fatCtrl =
+        TextEditingController(text: (ex?.fatG ?? 8.0).toStringAsFixed(1));
+    _qtyCtrl = TextEditingController(text: '1.0');
+    _category = ex?.category ?? 'Meals';
+    _savedImagePath = ex?.imageAssetPath;
+    _alsoLogNow = ex == null ? widget.logImmediatelyDefault : false;
+  }
 
   @override
   void dispose() {
@@ -378,6 +429,7 @@ class _CustomFoodCreatorSheetState
     _protCtrl.dispose();
     _carbsCtrl.dispose();
     _fatCtrl.dispose();
+    _qtyCtrl.dispose();
     super.dispose();
   }
 
@@ -392,7 +444,6 @@ class _CustomFoodCreatorSheetState
       );
       if (xfile == null) return;
 
-      // Section 7 rule: "Images: copy selected images into app-private storage if they must persist. Do not rely on temporary picker URIs as permanent paths."
       final docsDir = await getApplicationDocumentsDirectory();
       final imagesDir = Directory(p.join(docsDir.path, 'food_images'));
       if (!imagesDir.existsSync()) {
@@ -408,58 +459,112 @@ class _CustomFoodCreatorSheetState
       if (mounted) {
         setState(() => _savedImagePath = targetPath);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Photo selection cancelled or unavailable. You can still save your custom food.',
-            ),
-          ),
-        );
-      }
-    }
+    } catch (_) {}
   }
 
-  Future<void> _saveCustomFood() async {
+  Future<void> _saveManualFoodAndLog() async {
     final name = _nameCtrl.text.trim();
     final serving = _servingCtrl.text.trim();
     final kcal = int.tryParse(_kcalCtrl.text.trim());
     final prot = double.tryParse(_protCtrl.text.trim()) ?? 0.0;
     final carbs = double.tryParse(_carbsCtrl.text.trim()) ?? 0.0;
     final fat = double.tryParse(_fatCtrl.text.trim()) ?? 0.0;
+    final qty = (double.tryParse(_qtyCtrl.text.trim()) ?? 1.0).clamp(0.1, 25.0);
 
     if (name.isEmpty) {
-      setState(() => _error = 'Please enter a food name.');
+      setState(() => _error = 'Please enter a food or meal name.');
       return;
     }
-    if (kcal == null || kcal <= 0 || kcal > 5000) {
-      setState(() => _error = 'Please enter a valid calorie value (1–5000).');
+    if (kcal == null || kcal < 0 || kcal > 8000) {
+      setState(() => _error = 'Please enter a valid calorie value (0–8000).');
       return;
     }
 
-    await ref.read(appDatabaseProvider).addOrUpdateCustomFood(
-          name: name,
-          category: _category,
-          servingLabel: serving.isEmpty ? '1 serving' : serving,
-          servingAmount: 1.0,
-          kcal: kcal,
-          proteinG: prot.clamp(0.0, 500.0),
-          carbsG: carbs.clamp(0.0, 500.0),
-          fatG: fat.clamp(0.0, 500.0),
-          imageAssetPath: _savedImagePath,
+    final db = ref.read(appDatabaseProvider);
+    int? foodId = widget.existingFood?.id;
+
+    if (_saveToCatalogue || widget.existingFood != null) {
+      foodId = await db.addOrUpdateCustomFood(
+        id: widget.existingFood?.id,
+        name: name,
+        category: _category,
+        servingLabel: serving.isEmpty ? '1 serving' : serving,
+        servingAmount: 1.0,
+        kcal: kcal,
+        proteinG: prot.clamp(0.0, 500.0),
+        carbsG: carbs.clamp(0.0, 800.0),
+        fatG: fat.clamp(0.0, 500.0),
+        imageAssetPath: _savedImagePath,
+      );
+    }
+
+    if (_alsoLogNow) {
+      final selectedDate = ref.read(selectedDateProvider);
+      final now = DateTime.now();
+      final loggedAt = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        now.hour,
+        now.minute,
+        now.second,
+      );
+
+      final tempFood = FoodItem(
+        id: foodId ?? 0,
+        name: name,
+        normalizedName: name.toLowerCase(),
+        category: _category,
+        servingLabel: serving.isEmpty ? '1 serving' : serving,
+        servingAmount: 1.0,
+        kcal: kcal,
+        proteinG: prot,
+        carbsG: carbs,
+        fatG: fat,
+        imageAssetPath: _savedImagePath,
+        isCustom: true,
+      );
+
+      await db.logFoodItem(
+        food: tempFood,
+        quantity: qty,
+        mealType: _mealType,
+        loggedAt: loggedAt,
+      );
+
+      final pushEnabled =
+          await db.getAppSetting('realtime_push_on_log') != 'false';
+      if (pushEnabled) {
+        final toneId =
+            await db.getAppSetting('reminder_tone_id') ?? 'singing_bowl';
+        await LocalNotificationHelper.pushRealtimeNotification(
+          title: 'Manual Meal Logged • $name 🍛',
+          body:
+              '+${tempFood.scaledKcal(qty)} kcal (${tempFood.scaledProtein(qty)}g P, ${tempFood.scaledCarbs(qty)}g C, ${tempFood.scaledFat(qty)}g F)',
+          toneId: toneId,
         );
+      }
+    }
 
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added "$name" to your offline catalogue!')),
+      SnackBar(
+        content: Text(
+          _alsoLogNow
+              ? 'Logged "$name" (+${(kcal * qty).round()} kcal) to $_mealType!'
+              : 'Saved "$name" to your food catalogue!',
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: EdgeInsets.only(
@@ -487,17 +592,39 @@ class _CustomFoodCreatorSheetState
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Create Custom Food',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            const SizedBox(height: 14),
+            Text(
+              widget.existingFood != null
+                  ? FitNepalStrings.tr(
+                      lang,
+                      'Edit Food & Nutrition Values',
+                      'खाना र पोषण विवरण सम्पादन',
+                    )
+                  : FitNepalStrings.tr(
+                      lang,
+                      'Manual Food & Nutrition Entry',
+                      'म्यानुअल खाना र पोषण प्रविष्टि',
+                    ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              FitNepalStrings.tr(
+                lang,
+                'Enter exact calories, protein, carbs, fats, serving & meal manually',
+                'आफ्नो खानाको क्यालोरी, प्रोटिन, कार्ब्स र चिल्लो आफैं भर्नुहोस्',
+              ),
+              style: const TextStyle(
+                color: FitNepalColors.mutedPlum,
+                fontSize: 12.5,
+              ),
             ),
             const SizedBox(height: 12),
             if (_error != null) ...[
               Text(
                 _error!,
-                style: const TextStyle(
-                  color: FitNepalColors.berryRed,
+                style: TextStyle(
+                  color: primaryColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -508,23 +635,25 @@ class _CustomFoodCreatorSheetState
                 GestureDetector(
                   onTap: _pickFoodPhoto,
                   child: Container(
-                    width: 64,
-                    height: 64,
+                    width: 62,
+                    height: 62,
                     decoration: BoxDecoration(
-                      color: FitNepalColors.softPinkFill,
+                      color: primaryColor.withOpacity(0.10),
                       shape: BoxShape.circle,
-                      border: Border.all(color: FitNepalColors.roseBorder),
+                      border: Border.all(color: primaryColor.withOpacity(0.25)),
                     ),
-                    child: _savedImagePath != null
+                    child: _savedImagePath != null &&
+                            _savedImagePath!.startsWith('/') &&
+                            File(_savedImagePath!).existsSync()
                         ? ClipOval(
                             child: Image.file(
                               File(_savedImagePath!),
                               fit: BoxFit.cover,
                             ),
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.add_a_photo_rounded,
-                            color: FitNepalColors.berryRed,
+                            color: primaryColor,
                           ),
                   ),
                 ),
@@ -532,9 +661,13 @@ class _CustomFoodCreatorSheetState
                 Expanded(
                   child: TextField(
                     controller: _nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Food / Dish Name (e.g. Buff Sukuti)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: FitNepalStrings.tr(
+                        lang,
+                        'Food / Dish Name (e.g. Homemade Dal Bhat)',
+                        'खानाको नाम',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -563,7 +696,7 @@ class _CustomFoodCreatorSheetState
                   child: TextField(
                     controller: _servingCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'Serving Label (e.g. 1 plate)',
+                      labelText: 'Serving Unit (e.g. 1 plate)',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -618,277 +751,93 @@ class _CustomFoodCreatorSheetState
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+
+            if (widget.existingFood == null) ...[
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: primaryColor,
+                title: Text(
+                  FitNepalStrings.tr(
+                    lang,
+                    'Log to Today\'s Meals Immediately',
+                    'आजको खानामा तुरुन्तै थप्नुहोस्',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                value: _alsoLogNow,
+                onChanged: (v) => setState(() => _alsoLogNow = v),
+              ),
+              if (_alsoLogNow)
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _mealType,
+                        decoration: const InputDecoration(
+                          labelText: 'Meal Type',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: FitNepalCategories.mealTypes
+                            .map((m) =>
+                                DropdownMenuItem(value: m, child: Text(m)))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _mealType = v);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _qtyCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Quantity (e.g. 1.0)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: primaryColor,
+                title: Text(
+                  FitNepalStrings.tr(
+                    lang,
+                    'Save to My Food Catalogue for Future Use',
+                    'भविष्यको लागि खाना सूचीमा सुरक्षित गर्नुहोस्',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                value: _saveToCatalogue,
+                onChanged: (v) => setState(() => _saveToCatalogue = v),
+              ),
+            ],
+            const SizedBox(height: 14),
             PrimaryPillButton(
-              label: 'Save Custom Food',
-              leadingIcon: Icons.save_rounded,
-              onPressed: _saveCustomFood,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Offline Scan Food / Barcode & Nutrition Estimator sheet with contextual
-/// Camera permission UX per Section 6 ("Show a short explanation immediately
-/// before the system permission prompt, tied to the feature the user tapped.
-/// If denied, show a non-blocking explanation. If permanently denied, offer an Open Settings action.")
-class ScanFoodLookupSheet extends ConsumerStatefulWidget {
-  const ScanFoodLookupSheet({super.key});
-
-  @override
-  ConsumerState<ScanFoodLookupSheet> createState() =>
-      _ScanFoodLookupSheetState();
-}
-
-class _ScanFoodLookupSheetState extends ConsumerState<ScanFoodLookupSheet> {
-  final _barcodeCtrl = TextEditingController();
-  bool _cameraAuthorized = false;
-  bool _permanentlyDenied = false;
-  String? _statusMessage;
-
-  static const Map<String, String> _offlineBarcodeMap = {
-    '8901058001259': 'Dal Bhat',
-    '8901262010016': 'Milk (Dudh)',
-    '8901063014220': 'Banana',
-    '8904004400113': 'Steamed Momo (Chicken)',
-    '8901725121143': 'Apple',
-  };
-
-  @override
-  void dispose() {
-    _barcodeCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _requestCameraWithExplanation() async {
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Camera Access for Scan Food'),
-        content: const Text(
-          'FitNepal uses your camera only when you choose to scan a food package barcode offline. '
-          'Images never leave your phone, and you can always search or enter codes manually without granting camera access.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Use Manual Lookup'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: FitNepalColors.berryRed,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-
-    if (proceed != true) return;
-
-    try {
-      final status = await Permission.camera.request();
-      if (!mounted) return;
-      if (status.isGranted) {
-        setState(() {
-          _cameraAuthorized = true;
-          _permanentlyDenied = false;
-          _statusMessage =
-              'Camera ready! Point at a Nepali food barcode or tap a sample code below.';
-        });
-      } else if (status.isPermanentlyDenied) {
-        setState(() {
-          _cameraAuthorized = false;
-          _permanentlyDenied = true;
-          _statusMessage =
-              'Camera permission is permanently denied. You can still look up barcodes manually below, or enable Camera in Android Settings.';
-        });
-      } else {
-        setState(() {
-          _cameraAuthorized = false;
-          _permanentlyDenied = false;
-          _statusMessage =
-              'Camera access denied — no problem! All offline barcode and food lookups below remain 100% usable.';
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _statusMessage =
-              'Offline barcode & portion lookup ready below.';
-        });
-      }
-    }
-  }
-
-  Future<void> _lookupByName(String foodName) async {
-    final foods = await ref.read(appDatabaseProvider).getAllFoodsOnce();
-    final match = foods.firstWhere(
-      (f) => f.name.toLowerCase().contains(foodName.toLowerCase()),
-      orElse: () => foods.first,
-    );
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => LogFoodQuantitySheet(food: match),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: EdgeInsets.only(
-        left: 22,
-        right: 22,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? FitNepalColors.darkSurface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: FitNepalColors.roseBorder,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: FitNepalColors.softPinkFill,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_scanner_rounded,
-                    color: FitNepalColors.berryRed,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Scan Food & Nutrition Info',
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        '100% Offline barcode & portion estimator',
-                        style: TextStyle(
-                          color: FitNepalColors.mutedPlum,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Viewfinder / Camera Permission Banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? FitNepalColors.darkCanvas
-                    : FitNepalColors.canvasBlush,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: FitNepalColors.roseBorder),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    _cameraAuthorized
-                        ? Icons.center_focus_strong_rounded
-                        : Icons.camera_alt_outlined,
-                    size: 40,
-                    color: FitNepalColors.berryRed,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _statusMessage ??
-                        'Tap below to enable camera barcode scanning, or pick an offline product preset immediately without camera access.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, height: 1.4),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _requestCameraWithExplanation,
-                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                        label: Text(
-                          _cameraAuthorized
-                              ? 'Re-Scan Camera'
-                              : 'Scan with Camera',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: FitNepalColors.berryRed,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                      if (_permanentlyDenied)
-                        OutlinedButton.icon(
-                          onPressed: () => openAppSettings(),
-                          icon: const Icon(Icons.settings_outlined, size: 18),
-                          label: const Text('Open Settings'),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            const Text(
-              'Quick Offline Barcode Presets',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _offlineBarcodeMap.entries.map((e) {
-                return ActionChip(
-                  avatar: const Icon(
-                    Icons.view_week_rounded,
-                    size: 16,
-                    color: FitNepalColors.berryRed,
-                  ),
-                  label: Text('${e.value} (${e.key.substring(0, 6)}…)'),
-                  onPressed: () => _lookupByName(e.value),
-                );
-              }).toList(),
+              label: widget.existingFood != null
+                  ? FitNepalStrings.tr(lang, 'Update Food', 'अद्यावधिक गर्नुहोस्')
+                  : (_alsoLogNow
+                      ? FitNepalStrings.tr(
+                          lang,
+                          'Log & Save Manual Entry',
+                          'खाना थप्नुहोस् र सुरक्षित गर्नुहोस्',
+                        )
+                      : FitNepalStrings.tr(
+                          lang,
+                          'Save to Food Catalogue',
+                          'खाना सूचीमा सुरक्षित गर्नुहोस्',
+                        )),
+              leadingIcon: Icons.check_circle_outline_rounded,
+              onPressed: _saveManualFoodAndLog,
             ),
           ],
         ),
