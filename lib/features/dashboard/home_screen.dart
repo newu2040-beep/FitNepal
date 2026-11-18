@@ -28,11 +28,13 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(userProfileProvider).valueOrNull;
+    final profile = ref.watch(liveProfileProvider);
     final summaryAsync = ref.watch(dailyNutritionSummaryProvider);
     final selectedDate = ref.watch(selectedDateProvider);
-    final lang = profile?.language ?? 'en';
+    final lang = profile.language;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
 
     final summary = summaryAsync.valueOrNull ??
         DailyNutritionSummary(
@@ -79,24 +81,24 @@ class HomeScreen extends ConsumerWidget {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: FitNepalColors.softPinkFill,
+                                color: primaryColor.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(99),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.calendar_today_rounded,
                                     size: 11,
-                                    color: FitNepalColors.berryRed,
+                                    color: primaryColor,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     LocalDateHelpers.formatFriendlyDate(
                                       selectedDate,
                                     ),
-                                    style: const TextStyle(
-                                      color: FitNepalColors.berryRed,
+                                    style: TextStyle(
+                                      color: primaryColor,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -109,7 +111,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${profile?.displayName ?? 'Rahul Shah'} 👋',
+                        '${profile.displayName} 👋',
                         style: TextStyle(
                           color: isDark
                               ? FitNepalColors.darkTextPrimary
@@ -123,7 +125,8 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 UserAvatarWidget(
-                  avatarPath: profile?.avatarPath,
+                  avatarPath: profile.avatarPath,
+                  gender: profile.normalizedGender,
                   radius: 25,
                   onTap: () => context.go('/profile'),
                 ),
@@ -131,23 +134,23 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 18),
 
-            // 2. Hero Calories Today Berry Red Card
+            // 2. Hero Calories Today Card
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFFE52857),
-                    Color(0xFFC1123E),
-                    Color(0xFF9E0B30),
+                    secondaryColor,
+                    primaryColor,
+                    Color.lerp(primaryColor, Colors.black, 0.25)!,
                   ],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: FitNepalColors.berryRed.withOpacity(0.28),
+                    color: primaryColor.withOpacity(0.28),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -209,8 +212,16 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(height: 6),
                         Text(
                           summary.isOverCalorieTarget
-                              ? 'Over target by ${summary.caloriesOverBy} kcal'
-                              : '${summary.remainingCalories} kcal remaining',
+                              ? FitNepalStrings.tr(
+                                  lang,
+                                  'Over target by ${summary.caloriesOverBy} kcal',
+                                  'लक्ष्यभन्दा ${summary.caloriesOverBy} kcal बढी',
+                                )
+                              : FitNepalStrings.tr(
+                                  lang,
+                                  '${summary.remainingCalories} kcal remaining',
+                                  '${summary.remainingCalories} kcal बाँकी',
+                                ),
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.88),
                             fontSize: 12.5,
@@ -235,7 +246,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 3. Three Macro Cards Row (Protein 62g, Carbs 84g, Fats 28g)
+            // 3. Three Macro Cards Row
             Row(
               children: [
                 Expanded(
@@ -277,7 +288,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 4. "You're on track!" Status Card (matches Screen 2 middle card)
+            // 4. "You're on track!" Status Card
             FitNepalCard(
               onTap: () => context.go('/progress'),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -287,12 +298,12 @@ class HomeScreen extends ConsumerWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: FitNepalColors.softPinkFill,
+                      color: primaryColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.track_changes_rounded,
-                      color: FitNepalColors.berryRed,
+                      color: primaryColor,
                       size: 26,
                     ),
                   ),
@@ -321,7 +332,11 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(height: 2),
                         Text(
                           summary.isOverCalorieTarget
-                              ? 'Over by ${summary.caloriesOverBy} kcal — balance with hydration & light activity.'
+                              ? FitNepalStrings.tr(
+                                  lang,
+                                  'Over by ${summary.caloriesOverBy} kcal — balance with hydration.',
+                                  '${summary.caloriesOverBy} kcal बढी — पर्याप्त पानी पिउनुहोस्।',
+                                )
                               : FitNepalStrings.tr(
                                   lang,
                                   'Keep going for your goal.',
@@ -368,17 +383,17 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         Text(
                           FitNepalStrings.tr(lang, 'See all', 'सबै हेर्नुहोस्'),
-                          style: const TextStyle(
-                            color: FitNepalColors.berryRed,
+                          style: TextStyle(
+                            color: primaryColor,
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(width: 3),
-                        const Icon(
+                        Icon(
                           Icons.arrow_forward_rounded,
                           size: 15,
-                          color: FitNepalColors.berryRed,
+                          color: primaryColor,
                         ),
                       ],
                     ),
@@ -395,7 +410,7 @@ class HomeScreen extends ConsumerWidget {
                   label: FitNepalStrings.tr(lang, 'Add Food', 'खाना थप्नुहोस्'),
                   icon: Icons.restaurant_rounded,
                   bgColor: const Color(0xFFFDE5EC),
-                  iconColor: FitNepalColors.berryRed,
+                  iconColor: primaryColor,
                   onTap: () => context.push('/add-food'),
                 ),
                 _QuickActionTile(
@@ -438,7 +453,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 22),
 
-            // 6. Hydration Summary Strip (Required content per Section 2)
+            // 6. Hydration Summary Strip
             FitNepalCard(
               onTap: () {
                 showModalBottomSheet(
@@ -517,7 +532,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // 7. Today's Logged Meals Section (Required content per Section 2)
+            // 7. Today's Logged Meals Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -539,15 +554,19 @@ class HomeScreen extends ConsumerWidget {
                           .read(appDatabaseProvider)
                           .seedMockupShowcaseData();
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.auto_fix_high_rounded,
                       size: 16,
-                      color: FitNepalColors.berryRed,
+                      color: primaryColor,
                     ),
-                    label: const Text(
-                      'Load Sample Day',
+                    label: Text(
+                      FitNepalStrings.tr(
+                        lang,
+                        'Load Sample Day',
+                        'नमूना डाटा लोड',
+                      ),
                       style: TextStyle(
-                        color: FitNepalColors.berryRed,
+                        color: primaryColor,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -560,10 +579,21 @@ class HomeScreen extends ConsumerWidget {
             if (summary.foodLogs.isEmpty)
               EmptyStateCard(
                 icon: Icons.restaurant_menu_rounded,
-                title: 'No meals logged for this day yet',
-                message:
-                    'Tap "Add Food" to log Dal Bhat, Momo, fruits, or custom dishes — or load the Mockup Sample Day.',
-                actionLabel: 'Add First Meal',
+                title: FitNepalStrings.tr(
+                  lang,
+                  'No meals logged for this day yet',
+                  'आज कुनै खाना रेकर्ड गरिएको छैन',
+                ),
+                message: FitNepalStrings.tr(
+                  lang,
+                  'Tap "Add Food" to log Dal Bhat, Momo, fruits, or custom dishes — or load the Mockup Sample Day.',
+                  'दाल भात, मःम, फलफूल वा अन्य खाना थप्न तलको बटन थिच्नुहोस्।',
+                ),
+                actionLabel: FitNepalStrings.tr(
+                  lang,
+                  'Add First Meal',
+                  'पहिलो खाना थप्नुहोस्',
+                ),
                 onAction: () => context.push('/add-food'),
               )
             else
@@ -581,12 +611,12 @@ class HomeScreen extends ConsumerWidget {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: FitNepalColors.softPinkFill,
+                            color: primaryColor.withOpacity(0.10),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.lunch_dining_rounded,
-                            color: FitNepalColors.berryRed,
+                            color: primaryColor,
                             size: 22,
                           ),
                         ),
@@ -615,11 +645,11 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         Text(
                           '${entry.kcalSnapshot} kcal',
-                          style: const TextStyle(
-                            color: FitNepalColors.berryRed,
+                          style: TextStyle(
+                            color: primaryColor,
                             fontSize: 14.5,
                             fontWeight: FontWeight.w800,
-                            fontFeatures: [FontFeature.tabularFigures()],
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                         IconButton(
@@ -680,7 +710,7 @@ class _QuickActionTile extends StatelessWidget {
               width: 62,
               height: 62,
               decoration: BoxDecoration(
-                color: isDark ? FitNepalColors.darkSurface : bgColor,
+                color: isDark ? Theme.of(context).colorScheme.surface : bgColor,
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Icon(icon, color: iconColor, size: 28),

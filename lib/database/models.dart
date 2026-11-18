@@ -9,6 +9,14 @@ class UserProfile {
   final String themeMode; // 'light' | 'dark' | 'system'
   final String units; // 'metric' | 'imperial'
   final String tagline;
+  final int age; // 10..100
+  final String gender; // Strictly 'Male' | 'Female'
+  final double heightCm; // 100..230
+  final double weightKg; // 25..250
+  final String activityLevel; // 'Sedentary' | 'Light' | 'Moderate' | 'Active'
+  final String colorPalette; // 'berry' | 'teal' | 'rhododendron' | 'cobalt' | 'sunset'
+  final String fontFamily; // 'sans' | 'rounded' | 'serif' | 'mono' | 'condensed'
+  final double fontScale; // 0.9 .. 1.2
 
   const UserProfile({
     required this.id,
@@ -19,7 +27,60 @@ class UserProfile {
     required this.themeMode,
     required this.units,
     this.tagline = 'Healthy Mind, Healthy Life ❤️',
+    this.age = 25,
+    this.gender = 'Male',
+    this.heightCm = 170.0,
+    this.weightKg = 68.0,
+    this.activityLevel = 'Moderate',
+    this.colorPalette = 'berry',
+    this.fontFamily = 'sans',
+    this.fontScale = 1.0,
   });
+
+  /// Normalized gender guaranteed to be either 'Male' or 'Female'.
+  String get normalizedGender => gender == 'Female' ? 'Female' : 'Male';
+
+  /// Body Mass Index (BMI) calculated in real-time from heightCm and weightKg.
+  double get bmi {
+    final hMeters = (heightCm.clamp(100.0, 240.0)) / 100.0;
+    return weightKg.clamp(25.0, 250.0) / (hMeters * hMeters);
+  }
+
+  String get bmiLabel => bmi.toStringAsFixed(1);
+
+  /// Mifflin-St Jeor recommended daily calories based on Age, Gender (Male/Female), Height, Weight & Activity.
+  int get recommendedDailyKcal {
+    final baseBmr = (10.0 * weightKg) +
+        (6.25 * heightCm) -
+        (5.0 * age) +
+        (normalizedGender == 'Male' ? 5.0 : -161.0);
+    final double multiplier;
+    switch (activityLevel) {
+      case 'Sedentary':
+        multiplier = 1.2;
+        break;
+      case 'Light':
+        multiplier = 1.375;
+        break;
+      case 'Active':
+        multiplier = 1.725;
+        break;
+      case 'Moderate':
+      default:
+        multiplier = 1.55;
+        break;
+    }
+    return (baseBmr * multiplier).round().clamp(1200, 4500);
+  }
+
+  double get recommendedProteinG =>
+      ((recommendedDailyKcal * 0.25) / 4.0).roundToDouble();
+  double get recommendedCarbsG =>
+      ((recommendedDailyKcal * 0.48) / 4.0).roundToDouble();
+  double get recommendedFatG =>
+      ((recommendedDailyKcal * 0.27) / 9.0).roundToDouble();
+  int get recommendedWaterMl =>
+      (weightKg * 35.0).round().clamp(1500, 4500);
 
   UserProfile copyWith({
     int? id,
@@ -31,7 +92,16 @@ class UserProfile {
     String? themeMode,
     String? units,
     String? tagline,
+    int? age,
+    String? gender,
+    double? heightCm,
+    double? weightKg,
+    String? activityLevel,
+    String? colorPalette,
+    String? fontFamily,
+    double? fontScale,
   }) {
+    final nextGender = gender ?? this.gender;
     return UserProfile(
       id: id ?? this.id,
       displayName: displayName ?? this.displayName,
@@ -41,6 +111,14 @@ class UserProfile {
       themeMode: themeMode ?? this.themeMode,
       units: units ?? this.units,
       tagline: tagline ?? this.tagline,
+      age: (age ?? this.age).clamp(10, 100),
+      gender: nextGender == 'Female' ? 'Female' : 'Male',
+      heightCm: (heightCm ?? this.heightCm).clamp(100.0, 240.0),
+      weightKg: (weightKg ?? this.weightKg).clamp(25.0, 250.0),
+      activityLevel: activityLevel ?? this.activityLevel,
+      colorPalette: colorPalette ?? this.colorPalette,
+      fontFamily: fontFamily ?? this.fontFamily,
+      fontScale: (fontScale ?? this.fontScale).clamp(0.85, 1.25),
     );
   }
 
@@ -53,22 +131,44 @@ class UserProfile {
         'themeMode': themeMode,
         'units': units,
         'tagline': tagline,
+        'age': age,
+        'gender': normalizedGender,
+        'heightCm': heightCm,
+        'weightKg': weightKg,
+        'activityLevel': activityLevel,
+        'colorPalette': colorPalette,
+        'fontFamily': fontFamily,
+        'fontScale': fontScale,
       };
 
-  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
-        id: (json['id'] as num?)?.toInt() ?? 1,
-        displayName: (json['displayName'] as String?) ?? 'Rahul Shah',
-        avatarPath: json['avatarPath'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-          (json['createdAt'] as num?)?.toInt() ??
-              DateTime.now().millisecondsSinceEpoch,
-        ),
-        language: (json['language'] as String?) ?? 'en',
-        themeMode: (json['themeMode'] as String?) ?? 'light',
-        units: (json['units'] as String?) ?? 'metric',
-        tagline:
-            (json['tagline'] as String?) ?? 'Healthy Mind, Healthy Life ❤️',
-      );
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    final rawGender = (json['gender'] as String?) ?? 'Male';
+    return UserProfile(
+      id: (json['id'] as num?)?.toInt() ?? 1,
+      displayName: (json['displayName'] as String?) ?? 'Rahul Shah',
+      avatarPath: json['avatarPath'] as String?,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (json['createdAt'] as num?)?.toInt() ??
+            DateTime.now().millisecondsSinceEpoch,
+      ),
+      language: (json['language'] as String?) ?? 'en',
+      themeMode: (json['themeMode'] as String?) ?? 'light',
+      units: (json['units'] as String?) ?? 'metric',
+      tagline:
+          (json['tagline'] as String?) ?? 'Healthy Mind, Healthy Life ❤️',
+      age: ((json['age'] as num?)?.toInt() ?? 25).clamp(10, 100),
+      gender: rawGender == 'Female' ? 'Female' : 'Male',
+      heightCm: ((json['heightCm'] as num?)?.toDouble() ?? 170.0)
+          .clamp(100.0, 240.0),
+      weightKg: ((json['weightKg'] as num?)?.toDouble() ?? 68.0)
+          .clamp(25.0, 250.0),
+      activityLevel: (json['activityLevel'] as String?) ?? 'Moderate',
+      colorPalette: (json['colorPalette'] as String?) ?? 'berry',
+      fontFamily: (json['fontFamily'] as String?) ?? 'sans',
+      fontScale:
+          ((json['fontScale'] as num?)?.toDouble() ?? 1.0).clamp(0.85, 1.25),
+    );
+  }
 }
 
 class NutritionGoal {
@@ -309,11 +409,11 @@ class WaterLogEntry {
 class ReminderConfig {
   final int id;
   final bool enabled;
-  final String daysOfWeek; // e.g. '1,2,3,4,5,6,7'
-  final int startMinute; // minutes from midnight, e.g. 480 = 08:00
-  final int endMinute; // minutes from midnight, e.g. 1260 = 21:00
-  final int intervalMinutes; // e.g. 120
-  final String reminderType; // 'water' | 'meal'
+  final String daysOfWeek;
+  final int startMinute;
+  final int endMinute;
+  final int intervalMinutes;
+  final String reminderType;
 
   const ReminderConfig({
     required this.id,
@@ -384,10 +484,6 @@ class ReminderConfig {
       );
 }
 
-/// Daily nutrition and hydration summary following Section 4 rules:
-/// - Calories consumed = sum of food-log calorie snapshots for the selected local calendar day.
-/// - Remaining calories = max(0, daily target - consumed). When over target, show "over by".
-/// - Goal percentage = consumed / target * 100. Clamp ring visually at 100% (1.0), show true value when over.
 class DailyNutritionSummary {
   final DateTime date;
   final NutritionGoal goal;
@@ -412,13 +508,10 @@ class DailyNutritionSummary {
 
   int get caloriesOverBy => math.max(0, caloriesConsumed - calorieTarget);
 
-  /// True percentage (can exceed 100 when over target).
   double get trueCaloriePercentage => (caloriesConsumed / calorieTarget) * 100.0;
 
-  /// Rounded percentage integer for labels (e.g. 36%).
   int get caloriePercentageInt => trueCaloriePercentage.round();
 
-  /// Clamped 0.0..1.0 value for circular progress ring rendering.
   double get clampedRingProgress =>
       (caloriesConsumed / calorieTarget).clamp(0.0, 1.0);
 

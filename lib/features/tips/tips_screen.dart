@@ -1,57 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../app/providers.dart';
 import '../../core/constants.dart';
 import '../../core/shared_widgets.dart';
 
-class TipsScreen extends StatelessWidget {
+class TipsScreen extends ConsumerWidget {
   const TipsScreen({super.key});
 
-  static const List<({String title, String category, String body, IconData icon, Color accent})>
-      _nepaliTips = [
-    (
-      title: 'Balancing Your Daily Dal Bhat Plate',
-      category: 'Nepali Nutrition',
-      body:
-          'Traditional Dal Bhat is a complete protein source when lentil dal is paired with rice. Try filling half your thali with seasonal saag and tarkari, a quarter with thick dal, and a quarter with steamed bhat or brown rice.',
-      icon: Icons.rice_bowl_rounded,
-      accent: FitNepalColors.berryRed,
-    ),
-    (
-      title: 'Smart Momo Portions',
-      category: 'Mindful Eating',
-      body:
-          'Steamed chicken or vegetable momos (approx. 260–310 kcal per 8 pieces) have significantly less saturated fat than deep-fried or kothey momos. Pair with fresh tomato-cilantro achar instead of heavy mayo dips.',
-      icon: Icons.lunch_dining_rounded,
-      accent: FitNepalColors.carbsAccent,
-    ),
-    (
-      title: 'Altitude & Warm Hydration Habits',
-      category: 'Hydration',
-      body:
-          'Start your morning with 250–500 ml of warm water before morning Chiya. Consistent hydration across the day improves energy and prevents mistaking thirst for afternoon snack cravings.',
-      icon: Icons.water_drop_rounded,
-      accent: FitNepalColors.waterBlue,
-    ),
-    (
-      title: 'High-Protein Local Snacks',
-      category: 'Protein Boost',
-      body:
-          'Roasted Bhatmas Sadeko (soybeans), boiled eggs, Kwati sprout soup, and Juju Dhau / plain curd are affordable, traditional Nepali protein powerhouses that support muscle recovery.',
-      icon: Icons.fitness_center_rounded,
-      accent: FitNepalColors.proteinAccent,
-    ),
-    (
-      title: 'Reducing Hidden Sugar in Masala Chiya',
-      category: 'Daily Habits',
-      body:
-          'Two cups of sweet milk tea daily can add 150–220 kcal. Flavor your chiya naturally with crushed cardamom (sukumel), fresh ginger (aduwa), cinnamon, and black pepper while halving the sugar.',
-      icon: Icons.emoji_food_beverage_rounded,
-      accent: FitNepalColors.progressGreen,
-    ),
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    final tips = [
+      (
+        title: FitNepalStrings.tr(
+          lang,
+          'Balancing Your Daily Dal Bhat Plate',
+          'दैनिक दाल भात थालीको सन्तुलन',
+        ),
+        category: FitNepalStrings.tr(
+          lang,
+          'Nepali Nutrition',
+          'नेपाली पोषण',
+        ),
+        body: FitNepalStrings.tr(
+          lang,
+          'Traditional Dal Bhat is a complete protein source when lentil dal is paired with rice. Fill half your thali with seasonal saag and tarkari, a quarter with thick dal, and a quarter with steamed bhat.',
+          'दाल र भात सँगै खाँदा पूर्ण प्रोटिन प्राप्त हुन्छ। आफ्नो थालीको आधा भाग हरियो साग र तरकारी, चौथाइ भाग बाक्लो दाल र चौथाइ भाग भात राख्नुहोस्।',
+        ),
+        icon: Icons.rice_bowl_rounded,
+        accent: primaryColor,
+      ),
+      (
+        title: FitNepalStrings.tr(
+          lang,
+          'Smart Momo Portions',
+          'मःम खाने स्मार्ट तरिका',
+        ),
+        category: FitNepalStrings.tr(
+          lang,
+          'Mindful Eating',
+          'सन्तुलित आहार',
+        ),
+        body: FitNepalStrings.tr(
+          lang,
+          'Steamed chicken or vegetable momos (approx. 260–310 kcal per 8 pieces) have significantly less saturated fat than deep-fried momos. Pair with fresh tomato achar.',
+          'स्टिम गरिएको चिकेन वा भेज मःममा तारेको मःमभन्दा निकै कम चिल्लो हुन्छ। ताजा गोलभेडाको अचारसँग खानुहोस्।',
+        ),
+        icon: Icons.lunch_dining_rounded,
+        accent: FitNepalColors.carbsAccent,
+      ),
+      (
+        title: FitNepalStrings.tr(
+          lang,
+          'Warm Morning Hydration',
+          'बिहान मनतातो पानीको बानी',
+        ),
+        category: FitNepalStrings.tr(lang, 'Hydration', 'पानी र स्वास्थ्य'),
+        body: FitNepalStrings.tr(
+          lang,
+          'Start your morning with 250–500 ml of warm water before morning Chiya. Consistent hydration across the day improves energy and digestion.',
+          'बिहान चिया पिउनुअघि २५०–५०० मिलि मनतातो पानी पिउनुहोस्। दिनभरि पर्याप्त पानी पिउँदा ऊर्जा र पाचन राम्रो हुन्छ।',
+        ),
+        icon: Icons.water_drop_rounded,
+        accent: FitNepalColors.waterBlue,
+      ),
+      (
+        title: FitNepalStrings.tr(
+          lang,
+          'High-Protein Local Snacks',
+          'उच्च प्रोटिनयुक्त नेपाली खाजा',
+        ),
+        category: FitNepalStrings.tr(lang, 'Protein Boost', 'प्रोटिन स्रोत'),
+        body: FitNepalStrings.tr(
+          lang,
+          'Roasted Bhatmas Sadeko (soybeans), boiled eggs, Kwati sprout soup, and Juju Dhau / plain curd are affordable, traditional Nepali protein powerhouses.',
+          'भटमास साँधेको, उसिनेको अण्डा, क्वाँटीको झोल र दही/जुजु धौ उत्कृष्ट स्थानीय प्रोटिनका स्रोत हुन्।',
+        ),
+        icon: Icons.fitness_center_rounded,
+        accent: FitNepalColors.proteinAccent,
+      ),
+    ];
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -61,7 +94,11 @@ class TipsScreen extends StatelessWidget {
           ),
           children: [
             Text(
-              'Healthy Nepal Tips 💡',
+              FitNepalStrings.tr(
+                lang,
+                'Healthy Nepal Tips 💡',
+                'स्वस्थ नेपाल सुझावहरू 💡',
+              ),
               style: TextStyle(
                 color: isDark
                     ? FitNepalColors.darkTextPrimary
@@ -72,16 +109,20 @@ class TipsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Offline nutrition & hydration guidance tailored for Nepali meals',
-              style: TextStyle(
+            Text(
+              FitNepalStrings.tr(
+                lang,
+                'Offline nutrition & hydration guidance tailored for Nepali meals',
+                'नेपाली खाना र जीवनशैलीका लागि अफलाइन पोषण मार्गदर्शन',
+              ),
+              style: const TextStyle(
                 color: FitNepalColors.mutedPlum,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 18),
-            for (final tip in _nepaliTips)
+            for (final tip in tips)
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: FitNepalCard(

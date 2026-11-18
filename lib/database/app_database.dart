@@ -252,12 +252,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ===========================================================================
-  // PROFILE DAO
+  // PROFILE DAO (with full age, gender, body metrics, theme palette & font persistence)
   // ===========================================================================
   Stream<UserProfile> watchProfile() {
     return customSelect(
-      'SELECT * FROM profile ORDER BY id ASC LIMIT 1',
-      readsFrom: {profiles},
+      'SELECT p.*, (SELECT value FROM app_settings WHERE key = \'profile_extended_json\' LIMIT 1) AS ext_json '
+      'FROM profile p ORDER BY p.id ASC LIMIT 1',
+      readsFrom: {profiles, appSettings},
     ).watch().map((rows) {
       if (rows.isEmpty) {
         return UserProfile(
@@ -269,27 +270,15 @@ class AppDatabase extends _$AppDatabase {
           units: 'metric',
         );
       }
-      final r = rows.first.data;
-      return UserProfile(
-        id: (r['id'] as int?) ?? 1,
-        displayName: (r['display_name'] as String?) ?? 'Rahul Shah',
-        avatarPath: r['avatar_path'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-          (r['created_at'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
-        ),
-        language: (r['language'] as String?) ?? 'en',
-        themeMode: (r['theme_mode'] as String?) ?? 'light',
-        units: (r['units'] as String?) ?? 'metric',
-        tagline:
-            (r['tagline'] as String?) ?? 'Healthy Mind, Healthy Life ❤️',
-      );
+      return _parseProfileWithExtras(rows.first.data);
     });
   }
 
   Future<UserProfile> getProfileOnce() async {
     final rows = await customSelect(
-      'SELECT * FROM profile ORDER BY id ASC LIMIT 1',
-      readsFrom: {profiles},
+      'SELECT p.*, (SELECT value FROM app_settings WHERE key = \'profile_extended_json\' LIMIT 1) AS ext_json '
+      'FROM profile p ORDER BY p.id ASC LIMIT 1',
+      readsFrom: {profiles, appSettings},
     ).get();
     if (rows.isEmpty) {
       return UserProfile(
@@ -301,7 +290,18 @@ class AppDatabase extends _$AppDatabase {
         units: 'metric',
       );
     }
-    final r = rows.first.data;
+    return _parseProfileWithExtras(rows.first.data);
+  }
+
+  UserProfile _parseProfileWithExtras(Map<String, Object?> r) {
+    Map<String, dynamic> ext = const {};
+    final extRaw = r['ext_json'] as String?;
+    if (extRaw != null && extRaw.isNotEmpty) {
+      try {
+        ext = (jsonDecode(extRaw) as Map<String, dynamic>);
+      } catch (_) {}
+    }
+    final rawGender = (ext['gender'] as String?) ?? 'Male';
     return UserProfile(
       id: (r['id'] as int?) ?? 1,
       displayName: (r['display_name'] as String?) ?? 'Rahul Shah',
@@ -313,25 +313,79 @@ class AppDatabase extends _$AppDatabase {
       themeMode: (r['theme_mode'] as String?) ?? 'light',
       units: (r['units'] as String?) ?? 'metric',
       tagline: (r['tagline'] as String?) ?? 'Healthy Mind, Healthy Life ❤️',
+      age: ((ext['age'] as num?)?.toInt() ?? 25).clamp(10, 100),
+      gender: rawGender == 'Female' ? 'Female' : 'Male',
+      heightCm: ((ext['heightCm'] as num?)?.toDouble() ?? 170.0)
+          .clamp(100.0, 240.0),
+      weightKg: ((ext['weightKg'] as num?)?.toDouble() ?? 68.0)
+          .clamp(25.0, 250.0),
+      activityLevel: (ext['activityLevel'] as String?) ?? 'Moderate',
+      colorPalette: (ext['colorPalette'] as String?) ?? 'berry',
+      fontFamily: (ext['fontFamily'] as String?) ?? 'sans',
+      fontScale:
+          ((ext['fontScale'] as num?)?.toDouble() ?? 1.0).clamp(0.85, 1.25),
     );
   }
 
   Future<void> updateProfile(UserProfile updated) async {
-    await customUpdate(
-      'UPDATE profile SET display_name = ?, avatar_path = ?, language = ?, theme_mode = ?, units = ?, tagline = ? WHERE id = ?',
-      variables: [
-        Variable<String>(updated.displayName.trim().isEmpty
-            ? 'Rahul Shah'
-            : updated.displayName.trim()),
-        Variable<String>(updated.avatarPath),
-        Variable<String>(updated.language),
-        Variable<String>(updated.themeMode),
-        Variable<String>(updated.units),
-        Variable<String>(updated.tagline),
-        Variable<int>(updated.id),
-      ],
-      updates: {profiles},
-    );
+    await transaction(() async {
+      final countRow =
+          await customSelect('SELECT COUNT(*) AS cnt FROM profile').getSingle();
+      final count = (countRow.data['cnt'] as int?) ?? 0;
+      final cleanName = updated.displayName.trim().isEmpty
+          ? 'Rahul Shah'
+          : updated.displayName.trim();
+
+      if (count == 0) {
+        await customInsert(
+          'INSERT INTO profile (id, display_name, avatar_path, created_at, language, theme_mode, units, tagline) '
+          'VALUES (1, ?, ?, ?, ?, ?, ?, ?)',
+          variables: [
+            Variable<String>(cleanName),
+            Variable<String>(updated.avatarPath),
+            Variable<int>(updated.createdAt.millisecondsSinceEpoch),
+            Variable<String>(updated.language),
+            Variable<String>(updated.themeMode),
+            Variable<String>(updated.units),
+            Variable<String>(updated.tagline),
+          ],
+          updates: {profiles},
+        );
+      } else {
+        await customUpdate(
+          'UPDATE profile SET display_name = ?, avatar_path = ?, language = ?, theme_mode = ?, units = ?, tagline = ?',
+          variables: [
+            Variable<String>(cleanName),
+            Variable<String>(updated.avatarPath),
+            Variable<String>(updated.language),
+            Variable<String>(updated.themeMode),
+            Variable<String>(updated.units),
+            Variable<String>(updated.tagline),
+          ],
+          updates: {profiles},
+        );
+      }
+
+      final extJson = jsonEncode({
+        'age': updated.age,
+        'gender': updated.normalizedGender,
+        'heightCm': updated.heightCm,
+        'weightKg': updated.weightKg,
+        'activityLevel': updated.activityLevel,
+        'colorPalette': updated.colorPalette,
+        'fontFamily': updated.fontFamily,
+        'fontScale': updated.fontScale,
+      });
+
+      await customInsert(
+        'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)',
+        variables: [
+          const Variable<String>('profile_extended_json'),
+          Variable<String>(extJson),
+        ],
+        updates: {appSettings, profiles},
+      );
+    });
   }
 
   // ===========================================================================

@@ -37,8 +37,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(userProfileProvider).valueOrNull;
-    final lang = profile?.language ?? 'en';
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
 
     return Scaffold(
       body: Container(
@@ -58,27 +58,51 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
         ),
         child: Stack(
           children: [
-            // Bottom Nepal Himalayan Mountains & Pagoda Temple Artwork
             const Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: NepalMountainPagodaArtwork(height: 410),
             ),
-
-            // Foreground Content
             SafeArea(
               child: Column(
                 children: [
-                  // Optional Units & Goals quick setup button in top right
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 8,
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        TextButton.icon(
+                          onPressed: () => ref
+                              .read(liveProfileProvider.notifier)
+                              .toggleLanguage(),
+                          icon: const Icon(
+                            Icons.translate_rounded,
+                            size: 16,
+                            color: FitNepalColors.deepPlum,
+                          ),
+                          label: Text(
+                            lang == 'ne' ? 'नेपाली • EN' : 'English • ने',
+                            style: const TextStyle(
+                              color: FitNepalColors.deepPlum,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.68),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
                         TextButton.icon(
                           onPressed: () {
                             showModalBottomSheet(
@@ -106,7 +130,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.65),
+                            backgroundColor: Colors.white.withOpacity(0.68),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 8,
@@ -122,11 +146,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
                   const Spacer(flex: 2),
 
-                  // Center FitNepal Heart + Person + Green Leaves Logo
-                  const FitNepalHeartLogo(size: 120),
+                  const FitNepalHeartLogo(size: 124),
                   const SizedBox(height: 16),
 
-                  // FitNepal Title
                   const Text(
                     'FitNepal',
                     style: TextStyle(
@@ -138,7 +160,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   ),
                   const SizedBox(height: 6),
 
-                  // Subtitle: Eat Healthy • Live Better
                   Text(
                     FitNepalStrings.tr(
                       lang,
@@ -155,7 +176,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
                   const Spacer(flex: 5),
 
-                  // Bottom CTA Section over the deep crimson temple base
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: PrimaryPillButton(
@@ -173,8 +193,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Optional demo data action per Section 12:
-                  // "Include demo data only as an optional action; a production first launch should start with an empty personal log."
                   GestureDetector(
                     onTap: _isStarting
                         ? null
@@ -199,7 +217,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Healthy Nepal, Happy Nepal 🇳🇵
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

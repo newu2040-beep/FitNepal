@@ -6,7 +6,6 @@ import '../../app/providers.dart';
 import '../../core/constants.dart';
 import '../../core/date_helpers.dart';
 import '../../core/shared_widgets.dart';
-import '../../database/models.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -25,13 +24,45 @@ class ProgressScreen extends ConsumerWidget {
     }
   }
 
+  String _trTab(String lang, String tab) {
+    if (lang != 'ne') return tab;
+    switch (tab) {
+      case 'Overview':
+        return 'सारांश';
+      case 'Nutrition':
+        return 'पोषण';
+      case 'Trends':
+        return 'ट्रेन्ड';
+      default:
+        return tab;
+    }
+  }
+
+  String _trRange(String lang, String range) {
+    if (lang != 'ne') return range;
+    switch (range) {
+      case 'Today':
+        return 'आज';
+      case 'This Week':
+        return 'यो हप्ता';
+      case 'This Month':
+        return 'यो महिना';
+      default:
+        return range;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
     final selectedTab = ref.watch(progressTabProvider);
     final selectedRange = ref.watch(progressRangeProvider);
     final selectedBarIndex = ref.watch(selectedBarIndexProvider);
     final analyticsAsync = ref.watch(progressAnalyticsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
 
     return Scaffold(
       body: SafeArea(
@@ -41,12 +72,11 @@ class ProgressScreen extends ConsumerWidget {
             vertical: 14,
           ),
           children: [
-            // 1. Top Header: "Your Progress" + Calendar Icon Button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Your Progress',
+                  FitNepalStrings.tr(lang, 'Your Progress', 'तपाईंको प्रगति'),
                   style: TextStyle(
                     color: isDark
                         ? FitNepalColors.darkTextPrimary
@@ -64,13 +94,13 @@ class ProgressScreen extends ConsumerWidget {
                     height: 42,
                     decoration: BoxDecoration(
                       color: isDark
-                          ? FitNepalColors.darkSurface
-                          : FitNepalColors.softPinkFill,
+                          ? Theme.of(context).colorScheme.surface
+                          : primaryColor.withOpacity(0.10),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.calendar_month_rounded,
-                      color: FitNepalColors.deepPlum,
+                      color: primaryColor,
                       size: 21,
                     ),
                   ),
@@ -79,12 +109,12 @@ class ProgressScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 2. Segmented Pill Tabs: Overview | Nutrition | Trends
+            // Segmented Pill Tabs: Overview | Nutrition | Trends
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: isDark
-                    ? FitNepalColors.darkSurface
+                    ? Theme.of(context).colorScheme.surface
                     : const Color(0xFFF6EAF0),
                 borderRadius: BorderRadius.circular(FitNepalSpacing.pillRadius),
               ),
@@ -100,7 +130,7 @@ class ProgressScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: selectedTab == tab
-                                ? FitNepalColors.berryRed
+                                ? primaryColor
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(
                               FitNepalSpacing.pillRadius,
@@ -108,8 +138,7 @@ class ProgressScreen extends ConsumerWidget {
                             boxShadow: selectedTab == tab
                                 ? [
                                     BoxShadow(
-                                      color: FitNepalColors.berryRed
-                                          .withOpacity(0.24),
+                                      color: primaryColor.withOpacity(0.24),
                                       blurRadius: 8,
                                       offset: const Offset(0, 3),
                                     ),
@@ -118,7 +147,7 @@ class ProgressScreen extends ConsumerWidget {
                           ),
                           alignment: Alignment.center,
                           child: Text(
-                            tab,
+                            _trTab(lang, tab),
                             style: TextStyle(
                               color: selectedTab == tab
                                   ? Colors.white
@@ -140,19 +169,21 @@ class ProgressScreen extends ConsumerWidget {
             const SizedBox(height: 18),
 
             analyticsAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(40),
+              loading: () => Padding(
+                padding: const EdgeInsets.all(40),
                 child: Center(
-                  child: CircularProgressIndicator(
-                    color: FitNepalColors.berryRed,
-                  ),
+                  child: CircularProgressIndicator(color: primaryColor),
                 ),
               ),
               error: (err, _) => EmptyStateCard(
                 icon: Icons.bar_chart_rounded,
-                title: 'Unable to load progress data',
+                title: FitNepalStrings.tr(
+                  lang,
+                  'Unable to load progress data',
+                  'प्रगति विवरण लोड हुन सकेन',
+                ),
                 message: err.toString(),
-                actionLabel: 'Retry',
+                actionLabel: FitNepalStrings.tr(lang, 'Retry', 'पुनः प्रयास'),
                 onAction: () => ref.invalidate(progressAnalyticsProvider),
               ),
               data: (data) {
@@ -164,15 +195,17 @@ class ProgressScreen extends ConsumerWidget {
                     : data.buckets[safeBarIdx];
 
                 if (selectedTab == 'Nutrition') {
-                  return _NutritionTabContent(data: data);
+                  return _NutritionTabContent(data: data, lang: lang);
                 } else if (selectedTab == 'Trends') {
-                  return _TrendsTabContent(data: data);
+                  return _TrendsTabContent(
+                    data: data,
+                    lang: lang,
+                    primaryColor: primaryColor,
+                  );
                 }
 
-                // Default 'Overview' tab matching Screen 4 of the mockup
                 return Column(
                   children: [
-                    // 3. Goal Ring + Calories / Protein / Water Legend Card
                     FitNepalCard(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -184,11 +217,15 @@ class ProgressScreen extends ConsumerWidget {
                             progress: (data.goalMetPercentage / 100.0)
                                 .clamp(0.0, 1.0),
                             centerLabel: '${data.goalMetPercentage}%',
-                            subLabel: 'Goal Met',
+                            subLabel: FitNepalStrings.tr(
+                              lang,
+                              'Goal Met',
+                              'लक्ष्य पूरा',
+                            ),
                             size: 126,
                             strokeWidth: 13,
-                            activeColor: FitNepalColors.berryRed,
-                            trackColor: const Color(0xFFF9DCE5),
+                            activeColor: primaryColor,
+                            trackColor: primaryColor.withOpacity(0.16),
                             centerTextStyle: TextStyle(
                               color: isDark
                                   ? FitNepalColors.darkTextPrimary
@@ -213,22 +250,34 @@ class ProgressScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _LegendMetricItem(
-                                  dotColor: FitNepalColors.berryRed,
-                                  label: 'Calories',
+                                  dotColor: primaryColor,
+                                  label: FitNepalStrings.tr(
+                                    lang,
+                                    'Calories',
+                                    'क्यालोरी',
+                                  ),
                                   valueText:
                                       '${LocalDateHelpers.formatNumber(data.averageCalories)} / ${LocalDateHelpers.formatNumber(data.calorieTarget)}',
                                 ),
                                 const SizedBox(height: 14),
                                 _LegendMetricItem(
                                   dotColor: FitNepalColors.progressGreen,
-                                  label: 'Protein',
+                                  label: FitNepalStrings.tr(
+                                    lang,
+                                    'Protein',
+                                    'प्रोटिन',
+                                  ),
                                   valueText:
                                       '${data.averageProteinG.round()} / ${data.proteinTargetG.round()}g',
                                 ),
                                 const SizedBox(height: 14),
                                 _LegendMetricItem(
                                   dotColor: FitNepalColors.waterBlue,
-                                  label: 'Water',
+                                  label: FitNepalStrings.tr(
+                                    lang,
+                                    'Water',
+                                    'पानी',
+                                  ),
                                   valueText:
                                       '${data.averageWaterLiters.toStringAsFixed(1)} / ${data.waterTargetLiters.toStringAsFixed(1)}L',
                                 ),
@@ -240,7 +289,6 @@ class ProgressScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 18),
 
-                    // 4. Bar Chart Card ("This Week v" + Mon..Sun bars + 1,920 kcal tooltip)
                     FitNepalCard(
                       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
                       child: Column(
@@ -256,25 +304,25 @@ class ProgressScreen extends ConsumerWidget {
                                       .read(progressRangeProvider.notifier)
                                       .state = val;
                                 },
-                                itemBuilder: (_) => const [
+                                itemBuilder: (_) => [
                                   PopupMenuItem(
                                     value: 'Today',
-                                    child: Text('Today'),
+                                    child: Text(_trRange(lang, 'Today')),
                                   ),
                                   PopupMenuItem(
                                     value: 'This Week',
-                                    child: Text('This Week'),
+                                    child: Text(_trRange(lang, 'This Week')),
                                   ),
                                   PopupMenuItem(
                                     value: 'This Month',
-                                    child: Text('This Month'),
+                                    child: Text(_trRange(lang, 'This Month')),
                                   ),
                                 ],
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      selectedRange,
+                                      _trRange(lang, selectedRange),
                                       style: const TextStyle(
                                         fontSize: 16.5,
                                         fontWeight: FontWeight.w800,
@@ -288,8 +336,6 @@ class ProgressScreen extends ConsumerWidget {
                                   ],
                                 ),
                               ),
-
-                              // Dark plum floating pill showing selected bar kcal
                               if (activeBucket != null)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -413,7 +459,7 @@ class ProgressScreen extends ConsumerWidget {
                                             data.buckets[idx].shortLabel,
                                             style: TextStyle(
                                               color: isSelected
-                                                  ? FitNepalColors.berryRed
+                                                  ? primaryColor
                                                   : FitNepalColors.mutedPlum,
                                               fontSize: 11.5,
                                               fontWeight: isSelected
@@ -449,13 +495,16 @@ class ProgressScreen extends ConsumerWidget {
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
                                             colors: isSelected
-                                                ? const [
-                                                    FitNepalColors.berryRed,
-                                                    Color(0xFFF58AA5),
+                                                ? [
+                                                    primaryColor,
+                                                    secondaryColor
+                                                        .withOpacity(0.65),
                                                   ]
-                                                : const [
-                                                    Color(0xFFEC5B7E),
-                                                    Color(0xFFFAD3DF),
+                                                : [
+                                                    secondaryColor
+                                                        .withOpacity(0.75),
+                                                    primaryColor
+                                                        .withOpacity(0.22),
                                                   ],
                                           ),
                                         ),
@@ -471,7 +520,6 @@ class ProgressScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // 5. Insights Card (matches Screen 4 bottom pink card)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 18,
@@ -479,11 +527,11 @@ class ProgressScreen extends ConsumerWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? FitNepalColors.darkSurface
-                            : const Color(0xFFFDE6EE),
+                            ? Theme.of(context).colorScheme.surface
+                            : primaryColor.withOpacity(0.09),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
-                          color: FitNepalColors.berryRed.withOpacity(0.14),
+                          color: primaryColor.withOpacity(0.18),
                         ),
                       ),
                       child: Row(
@@ -506,16 +554,24 @@ class ProgressScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Insights',
-                                  style: TextStyle(
+                                Text(
+                                  FitNepalStrings.tr(
+                                    lang,
+                                    'Insights',
+                                    'मुख्य विश्लेषण',
+                                  ),
+                                  style: const TextStyle(
                                     fontSize: 15.5,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  "You're ${data.goalMetPercentage}% towards your weekly goal.",
+                                  FitNepalStrings.tr(
+                                    lang,
+                                    "You're ${data.goalMetPercentage}% towards your weekly goal.",
+                                    'तपाईं आफ्नो साप्ताहिक लक्ष्यको ${data.goalMetPercentage}% नजिक हुनुहुन्छ।',
+                                  ),
                                   style: const TextStyle(
                                     color: FitNepalColors.mutedPlum,
                                     fontSize: 13,
@@ -606,8 +662,9 @@ class _LegendMetricItem extends StatelessWidget {
 
 class _NutritionTabContent extends StatelessWidget {
   final ProgressAnalyticsData data;
+  final String lang;
 
-  const _NutritionTabContent({required this.data});
+  const _NutritionTabContent({required this.data, required this.lang});
 
   @override
   Widget build(BuildContext context) {
@@ -624,27 +681,42 @@ class _NutritionTabContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Average Daily Macro Split',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              Text(
+                FitNepalStrings.tr(
+                  lang,
+                  'Average Daily Macro Split',
+                  'दैनिक औसत म्याक्रो विवरण',
+                ),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 14),
               _MacroProgressRow(
-                label: 'Protein',
+                label: FitNepalStrings.tr(lang, 'Protein', 'प्रोटिन'),
                 currentG: totalProt / divisor,
                 targetG: data.proteinTargetG,
                 color: FitNepalColors.proteinAccent,
               ),
               const SizedBox(height: 12),
               _MacroProgressRow(
-                label: 'Carbohydrates',
+                label: FitNepalStrings.tr(
+                  lang,
+                  'Carbohydrates',
+                  'कार्बोहाइड्रेट',
+                ),
                 currentG: totalCarbs / divisor,
                 targetG: 220,
                 color: FitNepalColors.carbsAccent,
               ),
               const SizedBox(height: 12),
               _MacroProgressRow(
-                label: 'Healthy Fats',
+                label: FitNepalStrings.tr(
+                  lang,
+                  'Healthy Fats',
+                  'स्वस्थ चिल्लो',
+                ),
                 currentG: totalFat / divisor,
                 targetG: 65,
                 color: FitNepalColors.fatsAccent,
@@ -706,8 +778,14 @@ class _MacroProgressRow extends StatelessWidget {
 
 class _TrendsTabContent extends StatelessWidget {
   final ProgressAnalyticsData data;
+  final String lang;
+  final Color primaryColor;
 
-  const _TrendsTabContent({required this.data});
+  const _TrendsTabContent({
+    required this.data,
+    required this.lang,
+    required this.primaryColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -733,7 +811,7 @@ class _TrendsTabContent extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Protein ${b.proteinG.round()}g • Water ${b.waterMl} ml',
+                        '${FitNepalStrings.tr(lang, 'Protein', 'प्रोटिन')} ${b.proteinG.round()}g • ${FitNepalStrings.tr(lang, 'Water', 'पानी')} ${b.waterMl} ml',
                         style: const TextStyle(
                           color: FitNepalColors.mutedPlum,
                           fontSize: 12.5,
@@ -743,8 +821,8 @@ class _TrendsTabContent extends StatelessWidget {
                   ),
                   Text(
                     '${LocalDateHelpers.formatNumber(b.calories)} kcal',
-                    style: const TextStyle(
-                      color: FitNepalColors.berryRed,
+                    style: TextStyle(
+                      color: primaryColor,
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/constants.dart';
 import '../features/dashboard/home_screen.dart';
@@ -7,6 +8,7 @@ import '../features/onboarding/welcome_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/progress/progress_screen.dart';
 import '../features/tips/tips_screen.dart';
+import 'providers.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -49,7 +51,6 @@ final GoRouter fitNepalRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/welcome',
   routes: [
-    // Screen 1: Welcome (Outside the main bottom navigation shell per Section 2)
     GoRoute(
       path: '/welcome',
       parentNavigatorKey: _rootNavigatorKey,
@@ -58,8 +59,6 @@ final GoRouter fitNepalRouter = GoRouter(
         child: const WelcomeScreen(),
       ),
     ),
-
-    // Screen 3: Add Food (Opened from prominent central '+' button or Quick Actions)
     GoRoute(
       path: '/add-food',
       parentNavigatorKey: _rootNavigatorKey,
@@ -68,8 +67,6 @@ final GoRouter fitNepalRouter = GoRouter(
         child: const AddFoodScreen(),
       ),
     ),
-
-    // Main Persistent Bottom Navigation Shell (Home, Progress, +, Tips, Profile)
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -112,9 +109,7 @@ final GoRouter fitNepalRouter = GoRouter(
   ],
 );
 
-/// Persistent Bottom Navigation Shell matching the 5-item bottom bar in the mockup:
-/// [Home]   [Progress]   [ (+) ]   [Tips]   [Profile]
-class FitNepalMainShell extends StatelessWidget {
+class FitNepalMainShell extends ConsumerWidget {
   final String location;
   final Widget child;
 
@@ -125,14 +120,18 @@ class FitNepalMainShell extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
 
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? FitNepalColors.darkSurface : Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           boxShadow: [
             BoxShadow(
@@ -152,24 +151,28 @@ class FitNepalMainShell extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _BottomNavItem(
-                  label: 'Home',
+                  label: FitNepalStrings.tr(lang, 'Home', 'गृह'),
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home_rounded,
+                  activeColor: primaryColor,
                   isSelected: location.startsWith('/home'),
                   onTap: () => context.go('/home'),
                 ),
                 _BottomNavItem(
-                  label: 'Progress',
+                  label: FitNepalStrings.tr(lang, 'Progress', 'प्रगति'),
                   icon: Icons.bar_chart_outlined,
                   activeIcon: Icons.bar_chart_rounded,
+                  activeColor: primaryColor,
                   isSelected: location.startsWith('/progress'),
                   onTap: () => context.go('/progress'),
                 ),
-
-                // Prominent central Berry Red '+' button opening Add Food
                 Semantics(
                   button: true,
-                  label: 'Add Food',
+                  label: FitNepalStrings.tr(
+                    lang,
+                    'Add Food',
+                    'खाना थप्नुहोस्',
+                  ),
                   child: GestureDetector(
                     onTap: () => context.push('/add-food'),
                     child: Container(
@@ -177,17 +180,14 @@ class FitNepalMainShell extends StatelessWidget {
                       height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [
-                            FitNepalColors.berryLight,
-                            FitNepalColors.berryRed,
-                          ],
+                        gradient: LinearGradient(
+                          colors: [secondaryColor, primaryColor],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: FitNepalColors.berryRed.withOpacity(0.38),
+                            color: primaryColor.withOpacity(0.38),
                             blurRadius: 14,
                             offset: const Offset(0, 5),
                           ),
@@ -201,18 +201,19 @@ class FitNepalMainShell extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 _BottomNavItem(
-                  label: 'Tips',
+                  label: FitNepalStrings.tr(lang, 'Tips', 'सुझाव'),
                   icon: Icons.lightbulb_outline_rounded,
                   activeIcon: Icons.lightbulb_rounded,
+                  activeColor: primaryColor,
                   isSelected: location.startsWith('/tips'),
                   onTap: () => context.go('/tips'),
                 ),
                 _BottomNavItem(
-                  label: 'Profile',
+                  label: FitNepalStrings.tr(lang, 'Profile', 'प्रोफाइल'),
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
+                  activeColor: primaryColor,
                   isSelected: location.startsWith('/profile'),
                   onTap: () => context.go('/profile'),
                 ),
@@ -229,6 +230,7 @@ class _BottomNavItem extends StatelessWidget {
   final String label;
   final IconData icon;
   final IconData activeIcon;
+  final Color activeColor;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -236,14 +238,14 @@ class _BottomNavItem extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.activeIcon,
+    required this.activeColor,
     required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = FitNepalColors.berryRed;
-    final inactiveColor = FitNepalColors.mutedPlum;
+    const inactiveColor = FitNepalColors.mutedPlum;
 
     return Semantics(
       selected: isSelected,
@@ -253,7 +255,7 @@ class _BottomNavItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: SizedBox(
-          width: 62,
+          width: 66,
           height: 56,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -266,6 +268,8 @@ class _BottomNavItem extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: isSelected ? activeColor : inactiveColor,
                   fontSize: 11,

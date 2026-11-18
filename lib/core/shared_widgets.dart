@@ -2,8 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'constants.dart';
 
-/// Primary pill button per Section 9:
-/// "Berry fill, white label, 52–56 dp height; pressed, loading and disabled states."
 class PrimaryPillButton extends StatefulWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -37,7 +35,9 @@ class _PrimaryPillButtonState extends State<PrimaryPillButton> {
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final enabled = widget.onPressed != null && !widget.isLoading;
-    final bg = widget.backgroundColor ?? FitNepalColors.berryRed;
+    final themePrimary = Theme.of(context).colorScheme.primary;
+    final themeSecondary = Theme.of(context).colorScheme.secondary;
+    final bg = widget.backgroundColor ?? themePrimary;
     final fg = widget.foregroundColor ?? Colors.white;
 
     return Semantics(
@@ -60,11 +60,8 @@ class _PrimaryPillButtonState extends State<PrimaryPillButton> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(FitNepalSpacing.pillRadius),
               gradient: enabled && widget.backgroundColor == null
-                  ? const LinearGradient(
-                      colors: [
-                        FitNepalColors.berryLight,
-                        FitNepalColors.berryRed,
-                      ],
+                  ? LinearGradient(
+                      colors: [themeSecondary, themePrimary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
@@ -127,7 +124,6 @@ class _PrimaryPillButtonState extends State<PrimaryPillButton> {
   }
 }
 
-/// Standard rounded FitNepal surface card (20–26 dp radius, subtle shadow, 16 dp padding).
 class FitNepalCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -149,13 +145,13 @@ class FitNepalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = color ??
-        (isDark ? FitNepalColors.darkSurface : FitNepalColors.surfaceWhite);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final bgColor = color ?? Theme.of(context).colorScheme.surface;
     final defaultBorder = border ??
         Border.all(
           color: isDark
               ? FitNepalColors.darkBorder
-              : FitNepalColors.roseBorder.withOpacity(0.85),
+              : primaryColor.withOpacity(0.14),
           width: 1.0,
         );
 
@@ -169,7 +165,7 @@ class FitNepalCard extends StatelessWidget {
           BoxShadow(
             color: isDark
                 ? Colors.black.withOpacity(0.22)
-                : FitNepalColors.berryRed.withOpacity(0.05),
+                : primaryColor.withOpacity(0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -191,10 +187,8 @@ class FitNepalCard extends StatelessWidget {
   }
 }
 
-/// Animated circular progress ring per Section 9:
-/// "Animated ring, center value and goal label; accessible semantic value."
 class AnimatedCalorieRing extends StatelessWidget {
-  final double progress; // 0.0 to 1.0 (visually clamped)
+  final double progress;
   final String centerLabel;
   final String? subLabel;
   final double size;
@@ -266,7 +260,7 @@ class AnimatedCalorieRing extends StatelessWidget {
                       Text(
                         subLabel!,
                         style: subTextStyle ??
-                            TextStyle(
+                            const TextStyle(
                               color: FitNepalColors.mutedPlum,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -335,8 +329,6 @@ class _CalorieRingPainter extends CustomPainter {
   }
 }
 
-/// Macro card per Section 9:
-/// "Protein/carbs/fats with icon and consumed/target values; do not rely on color alone."
 class MacroMetricCard extends StatelessWidget {
   final String label;
   final double consumedG;
@@ -360,7 +352,8 @@ class MacroMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? FitNepalColors.darkSurface : backgroundColor;
+    final cardBg =
+        isDark ? Theme.of(context).colorScheme.surface : backgroundColor;
     final textColor =
         isDark ? FitNepalColors.darkTextPrimary : FitNepalColors.deepPlum;
     final subColor =
@@ -368,7 +361,8 @@ class MacroMetricCard extends StatelessWidget {
     final ratio = (consumedG / math.max(1.0, targetG)).clamp(0.0, 1.0);
 
     return Semantics(
-      label: '$label: ${consumedG.round()} grams consumed of ${targetG.round()} grams target',
+      label:
+          '$label: ${consumedG.round()} grams consumed of ${targetG.round()} grams target',
       button: onTap != null,
       child: GestureDetector(
         onTap: onTap,
@@ -423,8 +417,6 @@ class MacroMetricCard extends StatelessWidget {
   }
 }
 
-/// Horizontal scrolling category chips per Section 9:
-/// "Horizontal scrolling, single selected category, clear selected state."
 class CategoryChipBar extends StatelessWidget {
   final List<String> categories;
   final String selectedCategory;
@@ -437,9 +429,33 @@ class CategoryChipBar extends StatelessWidget {
     required this.onSelected,
   });
 
+  static String _localizeCat(BuildContext context, String cat) {
+    final lang = Localizations.localeOf(context).languageCode;
+    if (lang != 'ne') return cat;
+    switch (cat) {
+      case 'All':
+        return 'सबै';
+      case 'Fruits':
+        return 'फलफूल';
+      case 'Meals':
+        return 'मुख्य खाना';
+      case 'Snacks':
+        return 'खाजा';
+      case 'Drinks':
+        return 'पेय पदार्थ';
+      case 'Dairy':
+        return 'दुग्ध पदार्थ';
+      case 'Custom':
+        return 'कस्टम';
+      default:
+        return cat;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return SizedBox(
       height: 44,
@@ -467,16 +483,16 @@ class CategoryChipBar extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? FitNepalColors.berryRed
+                      ? primaryColor
                       : (isDark
-                          ? FitNepalColors.darkSurface
+                          ? Theme.of(context).colorScheme.surface
                           : FitNepalColors.chipUnselectedFill),
                   borderRadius:
                       BorderRadius.circular(FitNepalSpacing.pillRadius),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: FitNepalColors.berryRed.withOpacity(0.25),
+                            color: primaryColor.withOpacity(0.25),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -485,7 +501,7 @@ class CategoryChipBar extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  cat,
+                  _localizeCat(context, cat),
                   style: TextStyle(
                     color: isSelected
                         ? Colors.white
@@ -505,8 +521,6 @@ class CategoryChipBar extends StatelessWidget {
   }
 }
 
-/// Empty state card per Section 9:
-/// "Explain what is missing and provide one useful action."
 class EmptyStateCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -526,6 +540,7 @@ class EmptyStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return FitNepalCard(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Column(
@@ -534,11 +549,11 @@ class EmptyStateCard extends StatelessWidget {
           Container(
             width: 52,
             height: 52,
-            decoration: const BoxDecoration(
-              color: FitNepalColors.softPinkFill,
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: FitNepalColors.berryRed, size: 26),
+            child: Icon(icon, color: primaryColor, size: 26),
           ),
           const SizedBox(height: 12),
           Text(
@@ -572,7 +587,7 @@ class EmptyStateCard extends StatelessWidget {
               icon: const Icon(Icons.add_rounded, size: 18),
               label: Text(actionLabel),
               style: ElevatedButton.styleFrom(
-                backgroundColor: FitNepalColors.berryRed,
+                backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(

@@ -32,7 +32,7 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
     super.dispose();
   }
 
-  Future<void> _quickAddFood(FoodItem food) async {
+  Future<void> _quickAddFood(FoodItem food, String lang) async {
     final db = ref.read(appDatabaseProvider);
     final selectedDate = ref.read(selectedDateProvider);
     final now = DateTime.now();
@@ -62,10 +62,14 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Added 1 × ${food.servingLabel} ${food.name} (+${food.kcal} kcal)',
+          FitNepalStrings.tr(
+            lang,
+            'Added 1 × ${food.servingLabel} ${food.name} (+${food.kcal} kcal)',
+            'थपियो: १ × ${food.servingLabel} ${food.name} (+${food.kcal} kcal)',
+          ),
         ),
         action: SnackBarAction(
-          label: 'UNDO',
+          label: FitNepalStrings.tr(lang, 'UNDO', 'फिर्ता'),
           textColor: Colors.amberAccent,
           onPressed: () {
             db.deleteFoodLogEntry(logId);
@@ -104,15 +108,18 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(liveProfileProvider);
+    final lang = profile.language;
     final foodsAsync = ref.watch(filteredFoodsProvider);
     final selectedCategory = ref.watch(selectedFoodCategoryProvider);
     final searchQuery = ref.watch(foodSearchQueryProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Back',
+          tooltip: FitNepalStrings.tr(lang, 'Back', 'पछाडि'),
           icon: const Icon(Icons.chevron_left_rounded, size: 30),
           onPressed: () {
             if (context.canPop()) {
@@ -122,15 +129,23 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
             }
           },
         ),
-        title: const Text('Add Food'),
+        title: Text(FitNepalStrings.tr(lang, 'Add Food', 'खाना थप्नुहोस्')),
         actions: [
           IconButton(
-            tooltip: 'Create custom food',
+            tooltip: FitNepalStrings.tr(
+              lang,
+              'Create custom food',
+              'नयाँ खाना थप्नुहोस्',
+            ),
             onPressed: _openCustomFoodCreator,
             icon: const Icon(Icons.post_add_rounded, size: 22),
           ),
           IconButton(
-            tooltip: 'Scan food barcode',
+            tooltip: FitNepalStrings.tr(
+              lang,
+              'Scan food barcode',
+              'खाना स्क्यान गर्नुहोस्',
+            ),
             onPressed: _openScanSheet,
             icon: const Icon(Icons.qr_code_scanner_rounded, size: 22),
           ),
@@ -140,7 +155,6 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 1. Pill Search Bar ("Search food...")
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: FitNepalSpacing.screenHorizontal,
@@ -150,7 +164,7 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                 height: 50,
                 decoration: BoxDecoration(
                   color: isDark
-                      ? FitNepalColors.darkSurface
+                      ? Theme.of(context).colorScheme.surface
                       : const Color(0xFFF6ECF0),
                   borderRadius:
                       BorderRadius.circular(FitNepalSpacing.pillRadius),
@@ -161,7 +175,11 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                     ref.read(foodSearchQueryProvider.notifier).state = val;
                   },
                   decoration: InputDecoration(
-                    hintText: 'Search food...',
+                    hintText: FitNepalStrings.tr(
+                      lang,
+                      'Search food...',
+                      'खाना खोज्नुहोस् (जस्तै: Dal Bhat, Momo)...',
+                    ),
                     hintStyle: const TextStyle(
                       color: FitNepalColors.softPlum,
                       fontSize: 14.5,
@@ -191,7 +209,6 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
             ),
             const SizedBox(height: 8),
 
-            // 2. Horizontal Category Chips (All, Fruits, Meals, Snacks, Drinks, Dairy, Custom)
             CategoryChipBar(
               categories: FitNepalCategories.all,
               selectedCategory: selectedCategory,
@@ -201,20 +218,21 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
             ),
             const SizedBox(height: 12),
 
-            // 3. Food Catalogue List
             Expanded(
               child: foodsAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(
-                    color: FitNepalColors.berryRed,
-                  ),
+                loading: () => Center(
+                  child: CircularProgressIndicator(color: primaryColor),
                 ),
                 error: (err, _) => Center(
                   child: EmptyStateCard(
                     icon: Icons.error_outline_rounded,
-                    title: 'Could not load food catalogue',
+                    title: FitNepalStrings.tr(
+                      lang,
+                      'Could not load food catalogue',
+                      'खाना सूची लोड हुन सकेन',
+                    ),
                     message: err.toString(),
-                    actionLabel: 'Retry',
+                    actionLabel: FitNepalStrings.tr(lang, 'Retry', 'पुनः प्रयास'),
                     onAction: () => ref.invalidate(filteredFoodsProvider),
                   ),
                 ),
@@ -225,10 +243,21 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                       child: Center(
                         child: EmptyStateCard(
                           icon: Icons.search_off_rounded,
-                          title: 'No matching food found',
-                          message:
-                              'Can\'t find "$searchQuery"? Add it as a custom food entry in seconds.',
-                          actionLabel: 'Create Custom Food',
+                          title: FitNepalStrings.tr(
+                            lang,
+                            'No matching food found',
+                            'कुनै मिल्दो खाना भेटिएन',
+                          ),
+                          message: FitNepalStrings.tr(
+                            lang,
+                            'Can\'t find "$searchQuery"? Add it as a custom food entry in seconds.',
+                            '"$searchQuery" भेटिएन? आफ्नै कस्टम खाना थप्नुहोस्।',
+                          ),
+                          actionLabel: FitNepalStrings.tr(
+                            lang,
+                            'Create Custom Food',
+                            'नयाँ खाना बनाउनुहोस्',
+                          ),
                           onAction: _openCustomFoodCreator,
                         ),
                       ),
@@ -249,8 +278,10 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                       final food = foods[index];
                       return _FoodCatalogueRow(
                         food: food,
+                        lang: lang,
+                        primaryColor: primaryColor,
                         onRowTap: () => _openQuantitySheet(food),
-                        onQuickAdd: () => _quickAddFood(food),
+                        onQuickAdd: () => _quickAddFood(food, lang),
                       );
                     },
                   );
@@ -258,7 +289,6 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
               ),
             ),
 
-            // 4. Bottom "Scan Food - Find nutrition info" Card (matches Screen 3 bottom card)
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 FitNepalSpacing.screenHorizontal,
@@ -276,11 +306,11 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? FitNepalColors.darkSurface
+                        ? Theme.of(context).colorScheme.surface
                         : const Color(0xFFFDE6EE),
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
-                      color: FitNepalColors.berryRed.withOpacity(0.15),
+                      color: primaryColor.withOpacity(0.18),
                     ),
                   ),
                   child: Row(
@@ -292,29 +322,37 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                           color: Colors.white.withOpacity(isDark ? 0.1 : 0.8),
                           borderRadius: BorderRadius.circular(13),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.qr_code_scanner_rounded,
-                          color: FitNepalColors.berryRed,
+                          color: primaryColor,
                           size: 24,
                         ),
                       ),
                       const SizedBox(width: 14),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Scan Food',
+                              FitNepalStrings.tr(
+                                lang,
+                                'Scan Food',
+                                'खाना स्क्यान गर्नुहोस्',
+                              ),
                               style: TextStyle(
-                                color: FitNepalColors.berryRed,
+                                color: primaryColor,
                                 fontSize: 15.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
-                              'Find nutrition info',
-                              style: TextStyle(
+                              FitNepalStrings.tr(
+                                lang,
+                                'Find nutrition info',
+                                'पोषण विवरण पत्ता लगाउनुहोस्',
+                              ),
+                              style: const TextStyle(
                                 color: FitNepalColors.mutedPlum,
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
@@ -323,9 +361,9 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
                           ],
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.chevron_right_rounded,
-                        color: FitNepalColors.berryRed,
+                        color: primaryColor,
                       ),
                     ],
                   ),
@@ -341,11 +379,15 @@ class _AddFoodScreenState extends ConsumerState<AddFoodScreen> {
 
 class _FoodCatalogueRow extends StatelessWidget {
   final FoodItem food;
+  final String lang;
+  final Color primaryColor;
   final VoidCallback onRowTap;
   final VoidCallback onQuickAdd;
 
   const _FoodCatalogueRow({
     required this.food,
+    required this.lang,
+    required this.primaryColor,
     required this.onRowTap,
     required this.onQuickAdd,
   });
@@ -395,10 +437,10 @@ class _FoodCatalogueRow extends StatelessWidget {
                             color: FitNepalColors.softPinkFill,
                             borderRadius: BorderRadius.circular(99),
                           ),
-                          child: const Text(
-                            'Custom',
+                          child: Text(
+                            FitNepalStrings.tr(lang, 'Custom', 'कस्टम'),
                             style: TextStyle(
-                              color: FitNepalColors.berryRed,
+                              color: primaryColor,
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),
@@ -424,17 +466,17 @@ class _FoodCatalogueRow extends StatelessWidget {
               button: true,
               label: 'Quick add ${food.name}',
               child: Material(
-                color: FitNepalColors.softPinkFill,
+                color: primaryColor.withOpacity(0.12),
                 shape: const CircleBorder(),
                 child: InkWell(
                   onTap: onQuickAdd,
                   customBorder: const CircleBorder(),
-                  child: const SizedBox(
+                  child: SizedBox(
                     width: 40,
                     height: 40,
                     child: Icon(
                       Icons.add_rounded,
-                      color: FitNepalColors.berryRed,
+                      color: primaryColor,
                       size: 22,
                     ),
                   ),

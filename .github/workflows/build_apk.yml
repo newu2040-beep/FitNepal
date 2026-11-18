@@ -54,12 +54,12 @@ jobs:
 
           def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
           if (flutterVersionCode == null) {
-              flutterVersionCode = '1'
+              flutterVersionCode = '2'
           }
 
           def flutterVersionName = localProperties.getProperty('flutter.versionName')
           if (flutterVersionName == null) {
-              flutterVersionName = '1.0.0'
+              flutterVersionName = '1.1.0'
           }
 
           android {
@@ -111,6 +111,9 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
+      - name: Generate Native Android Launcher Icons from app_icon.png
+        run: dart run flutter_launcher_icons
+
       - name: Generate Drift SQLite code
         run: dart run build_runner build --delete-conflicting-outputs
 
@@ -132,4 +135,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk FitNepal.apk
-          gh release upload v1.0.0 FitNepal.apk --clobber || gh release create v1.0.0 FitNepal.apk --title "FitNepal v1.0.0 Release" --notes "Offline-First FitNepal Android APK" --clobber
+          gh release upload v1.0.0 FitNepal.apk --clobber || gh release create v1.0.0 FitNepal.apk --title "FitNepal v1.1.0 Release" --notes "Offline-First FitNepal Android APK with Native App Icon, Real-Time Language Switch, 5 Themes, 5 Fonts & Full Profile Customisation"

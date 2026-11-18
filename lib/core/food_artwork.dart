@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'constants.dart';
 
-/// Renders the exact FitNepal Heart + Active Person + Green Leaves emblem
-/// from the Welcome screen mockup.
+/// Renders the FitNepal app icon (using the bundled official artwork image
+/// with custom-painted fallback).
 class FitNepalHeartLogo extends StatelessWidget {
   final double size;
 
@@ -12,11 +12,31 @@ class FitNepalHeartLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _FitNepalHeartLogoPainter(),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.24),
+        boxShadow: [
+          BoxShadow(
+            color: FitNepalColors.berryRed.withOpacity(0.26),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.24),
+        child: Image.asset(
+          'assets/images/app_icon.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => CustomPaint(
+            size: Size(size, size),
+            painter: _FitNepalHeartLogoPainter(),
+          ),
+        ),
       ),
     );
   }
@@ -28,7 +48,6 @@ class _FitNepalHeartLogoPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // 1. Two fresh green leaves at the top center
     final leftLeafPaint = Paint()
       ..color = const Color(0xFF39B54A)
       ..style = PaintingStyle.fill;
@@ -50,7 +69,6 @@ class _FitNepalHeartLogoPainter extends CustomPainter {
       ..close();
     canvas.drawPath(rightLeaf, rightLeafPaint);
 
-    // 2. Berry-red Heart body
     final heartPath = Path()
       ..moveTo(w * 0.50, h * 0.92)
       ..cubicTo(w * 0.14, h * 0.70, w * 0.08, h * 0.40, w * 0.26, h * 0.27)
@@ -72,15 +90,12 @@ class _FitNepalHeartLogoPainter extends CustomPainter {
     canvas.drawShadow(heartPath, const Color(0x55D91F4D), 12, true);
     canvas.drawPath(heartPath, heartPaint);
 
-    // 3. White celebratory person silhouette inside the heart
     final whitePaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
 
-    // Head circle
     canvas.drawCircle(Offset(w * 0.50, h * 0.46), w * 0.068, whitePaint);
 
-    // Swooping arms + torso V-shape
     final figurePath = Path()
       ..moveTo(w * 0.29, h * 0.39)
       ..quadraticBezierTo(w * 0.42, h * 0.52, w * 0.50, h * 0.56)
@@ -122,7 +137,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Distant Himalayan snow peaks (soft rose/blush)
     final farMountain = Path()
       ..moveTo(0, h * 0.55)
       ..lineTo(w * 0.16, h * 0.30)
@@ -148,7 +162,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, h * 0.1, w, h * 0.6)),
     );
 
-    // Sunlit snow highlights on main peak
     final peakHighlight = Path()
       ..moveTo(w * 0.52, h * 0.12)
       ..lineTo(w * 0.43, h * 0.27)
@@ -161,7 +174,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
       Paint()..color = Colors.white.withOpacity(0.55),
     );
 
-    // Midground crimson ridge
     final midRidge = Path()
       ..moveTo(0, h * 0.62)
       ..quadraticBezierTo(w * 0.18, h * 0.44, w * 0.38, h * 0.53)
@@ -184,7 +196,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, h * 0.4, w, h * 0.6)),
     );
 
-    // Soft valley mist band
     canvas.drawRect(
       Rect.fromLTWH(0, h * 0.48, w, h * 0.14),
       Paint()
@@ -199,7 +210,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, h * 0.48, w, h * 0.14)),
     );
 
-    // Small flying birds in the sky
     final birdPaint = Paint()
       ..color = const Color(0xFFC43A5E).withOpacity(0.65)
       ..style = PaintingStyle.stroke
@@ -210,11 +220,9 @@ class _NepalMountainPagodaPainter extends CustomPainter {
     _drawBird(canvas, Offset(w * 0.76, h * 0.13), 7, birdPaint);
     _drawBird(canvas, Offset(w * 0.83, h * 0.16), 6, birdPaint);
 
-    // Foreground dark crimson hills & pagoda silhouettes
-    final darkSilhouette = const Color(0xFF6B0922);
-    final deeperBase = const Color(0xFF4F0518);
+    const darkSilhouette = Color(0xFF6B0922);
+    const deeperBase = Color(0xFF4F0518);
 
-    // Left secondary Pagoda temple (smaller, 3 tiers)
     _drawPagoda(
       canvas,
       centerX: w * 0.50,
@@ -224,7 +232,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
       color: const Color(0xFF8C1130),
     );
 
-    // Right Hero Pagoda temple (larger, 4 tiers matching mockup right side)
     _drawPagoda(
       canvas,
       centerX: w * 0.78,
@@ -234,7 +241,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
       color: darkSilhouette,
     );
 
-    // Bottom deep crimson slope holding the Get Started button
     final foregroundHill = Path()
       ..moveTo(0, h * 0.65)
       ..quadraticBezierTo(w * 0.28, h * 0.55, w * 0.56, h * 0.63)
@@ -246,7 +252,7 @@ class _NepalMountainPagodaPainter extends CustomPainter {
     canvas.drawPath(
       foregroundHill,
       Paint()
-        ..shader = LinearGradient(
+        ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
@@ -284,7 +290,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
     final tierHeight = width * 0.17;
 
     for (var i = 0; i < tiers; i++) {
-      // Inner wall pillar
       final wallW = currentW * 0.58;
       canvas.drawRect(
         Rect.fromCenter(
@@ -295,7 +300,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
         paint,
       );
 
-      // Sweeping upturned Nepali pagoda roof
       final roofTopY = currentY - tierHeight;
       final roofBottomY = currentY - tierHeight * 0.32;
       final halfW = currentW * 0.5;
@@ -327,7 +331,6 @@ class _NepalMountainPagodaPainter extends CustomPainter {
       currentW *= 0.78;
     }
 
-    // Golden/crimson Gajur spire at top of pagoda
     final spirePath = Path()
       ..moveTo(centerX - 3, currentY)
       ..lineTo(centerX, currentY - width * 0.18)
@@ -340,10 +343,11 @@ class _NepalMountainPagodaPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Renders the user's profile avatar (either their custom photo from app-private
-/// storage or a realistic vector portrait matching Rahul Shah in the mockup).
+/// Renders the user's profile avatar (custom photo from app-private storage,
+/// or a gender-responsive Male / Female Nepali portrait that updates in real-time).
 class UserAvatarWidget extends StatelessWidget {
   final String? avatarPath;
+  final String gender; // 'Male' | 'Female'
   final double radius;
   final VoidCallback? onTap;
   final bool showEditBadge;
@@ -351,6 +355,7 @@ class UserAvatarWidget extends StatelessWidget {
   const UserAvatarWidget({
     super.key,
     this.avatarPath,
+    this.gender = 'Male',
     this.radius = 24,
     this.onTap,
     this.showEditBadge = false,
@@ -358,8 +363,9 @@ class UserAvatarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasValidFile =
-        avatarPath != null && avatarPath!.isNotEmpty && File(avatarPath!).existsSync();
+    final hasValidFile = avatarPath != null &&
+        avatarPath!.isNotEmpty &&
+        File(avatarPath!).existsSync();
 
     final avatarContent = Container(
       width: radius * 2,
@@ -383,11 +389,15 @@ class UserAvatarWidget extends StatelessWidget {
             ? Image.file(
                 File(avatarPath!),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _DefaultRahulPortrait(
+                errorBuilder: (_, __, ___) => _DefaultGenderPortrait(
                   size: radius * 2,
+                  gender: gender,
                 ),
               )
-            : _DefaultRahulPortrait(size: radius * 2),
+            : _DefaultGenderPortrait(
+                size: radius * 2,
+                gender: gender,
+              ),
       ),
     );
 
@@ -428,7 +438,7 @@ class UserAvatarWidget extends StatelessWidget {
                   child: Icon(
                     Icons.edit_rounded,
                     size: math.max(14, radius * 0.28),
-                    color: FitNepalColors.berryRed,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
@@ -439,41 +449,59 @@ class UserAvatarWidget extends StatelessWidget {
   }
 }
 
-class _DefaultRahulPortrait extends StatelessWidget {
+class _DefaultGenderPortrait extends StatelessWidget {
   final double size;
+  final String gender;
 
-  const _DefaultRahulPortrait({required this.size});
+  const _DefaultGenderPortrait({
+    required this.size,
+    required this.gender,
+  });
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(size, size),
-      painter: _RahulPortraitPainter(),
+      painter: _RahulPortraitPainter(isFemale: gender == 'Female'),
     );
   }
 }
 
 class _RahulPortraitPainter extends CustomPainter {
+  final bool isFemale;
+
+  _RahulPortraitPainter({this.isFemale = false});
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
 
-    // Soft cool studio portrait background matching the mockup
     canvas.drawRect(
       Rect.fromLTWH(0, 0, w, h),
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFD5DCE6),
-            Color(0xFFB8C3D4),
-          ],
+          colors: isFemale
+              ? const [Color(0xFFFDE4EC), Color(0xFFF8BBD0)]
+              : const [Color(0xFFD5DCE6), Color(0xFFB8C3D4)],
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 
-    // Shoulders / Collar shirt
+    if (isFemale) {
+      // Long flowing dark hair behind shoulders for Female portrait
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(w * 0.50, h * 0.54),
+          width: w * 0.62,
+          height: h * 0.68,
+        ),
+        Paint()..color = const Color(0xFF1F161B),
+      );
+    }
+
+    // Shoulders / Kurta or Collar shirt
     final shirtPath = Path()
       ..moveTo(w * 0.12, h)
       ..quadraticBezierTo(w * 0.22, h * 0.72, w * 0.50, h * 0.72)
@@ -481,7 +509,10 @@ class _RahulPortraitPainter extends CustomPainter {
       ..close();
     canvas.drawPath(
       shirtPath,
-      Paint()..color = const Color(0xFF28558A),
+      Paint()
+        ..color = isFemale
+            ? const Color(0xFFD91F4D)
+            : const Color(0xFF28558A),
     );
 
     // Neck
@@ -489,12 +520,12 @@ class _RahulPortraitPainter extends CustomPainter {
       RRect.fromRectAndRadius(
         Rect.fromCenter(
           center: Offset(w * 0.50, h * 0.68),
-          width: w * 0.22,
+          width: w * 0.20,
           height: h * 0.18,
         ),
         Radius.circular(w * 0.06),
       ),
-      Paint()..color = const Color(0xFFD99B72),
+      Paint()..color = const Color(0xFFDFA076),
     );
 
     // Head / Face
@@ -504,35 +535,57 @@ class _RahulPortraitPainter extends CustomPainter {
         width: w * 0.42,
         height: h * 0.48,
       ),
-      Paint()..color = const Color(0xFFE5A981),
+      Paint()..color = const Color(0xFFE7AD86),
     );
 
-    // Hair (styled dark hair)
+    // Hair top
     final hairPath = Path()
       ..moveTo(w * 0.28, h * 0.42)
-      ..quadraticBezierTo(w * 0.26, h * 0.16, w * 0.50, h * 0.16)
-      ..quadraticBezierTo(w * 0.74, h * 0.16, w * 0.72, h * 0.42)
-      ..quadraticBezierTo(w * 0.66, h * 0.27, w * 0.50, h * 0.27)
-      ..quadraticBezierTo(w * 0.34, h * 0.27, w * 0.28, h * 0.42)
+      ..quadraticBezierTo(w * 0.26, h * 0.15, w * 0.50, h * 0.15)
+      ..quadraticBezierTo(w * 0.74, h * 0.15, w * 0.72, h * 0.42)
+      ..quadraticBezierTo(w * 0.65, h * 0.26, w * 0.50, h * 0.26)
+      ..quadraticBezierTo(w * 0.35, h * 0.26, w * 0.28, h * 0.42)
       ..close();
     canvas.drawPath(hairPath, Paint()..color = const Color(0xFF1D181A));
 
-    // Neat beard & mustache matching Rahul Shah in mockup
-    final beardPath = Path()
-      ..moveTo(w * 0.30, h * 0.46)
-      ..quadraticBezierTo(w * 0.32, h * 0.68, w * 0.50, h * 0.69)
-      ..quadraticBezierTo(w * 0.68, h * 0.68, w * 0.70, h * 0.46)
-      ..quadraticBezierTo(w * 0.64, h * 0.58, w * 0.50, h * 0.58)
-      ..quadraticBezierTo(w * 0.36, h * 0.58, w * 0.30, h * 0.46)
-      ..close();
-    canvas.drawPath(beardPath, Paint()..color = const Color(0xFF231D20));
+    if (!isFemale) {
+      // Neat beard & mustache for Male portrait
+      final beardPath = Path()
+        ..moveTo(w * 0.30, h * 0.46)
+        ..quadraticBezierTo(w * 0.32, h * 0.68, w * 0.50, h * 0.69)
+        ..quadraticBezierTo(w * 0.68, h * 0.68, w * 0.70, h * 0.46)
+        ..quadraticBezierTo(w * 0.64, h * 0.58, w * 0.50, h * 0.58)
+        ..quadraticBezierTo(w * 0.36, h * 0.58, w * 0.30, h * 0.46)
+        ..close();
+      canvas.drawPath(beardPath, Paint()..color = const Color(0xFF231D20));
+    } else {
+      // Traditional crimson Nepali Tika on forehead & golden earrings for Female portrait
+      canvas.drawCircle(
+        Offset(w * 0.50, h * 0.36),
+        w * 0.022,
+        Paint()..color = const Color(0xFFD91F4D),
+      );
+      canvas.drawCircle(
+        Offset(w * 0.28, h * 0.50),
+        w * 0.028,
+        Paint()..color = const Color(0xFFFFB300),
+      );
+      canvas.drawCircle(
+        Offset(w * 0.72, h * 0.50),
+        w * 0.028,
+        Paint()..color = const Color(0xFFFFB300),
+      );
+    }
 
     // Warm smile
     final smilePath = Path()
       ..moveTo(w * 0.42, h * 0.55)
       ..quadraticBezierTo(w * 0.50, h * 0.61, w * 0.58, h * 0.55)
       ..close();
-    canvas.drawPath(smilePath, Paint()..color = Colors.white);
+    canvas.drawPath(
+      smilePath,
+      Paint()..color = isFemale ? const Color(0xFFD81B60) : Colors.white,
+    );
 
     // Eyes
     final eyePaint = Paint()..color = const Color(0xFF1F191C);
@@ -541,7 +594,8 @@ class _RahulPortraitPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _RahulPortraitPainter oldDelegate) =>
+      oldDelegate.isFemale != isFemale;
 }
 
 /// Renders rich, colorful circular food illustrations for every starter &
